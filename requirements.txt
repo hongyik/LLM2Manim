@@ -1,0 +1,15 @@
+# Core Python Libraries
+logging
+json
+os
+subprocess
+uuid
+datetime
+re
+sys
+manim
+streamlit
+
+# LLM Integration
+openai
+anthropic  #Claude API
