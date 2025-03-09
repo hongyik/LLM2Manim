@@ -1,0 +1,2 @@
+kokoro-v0_19.onnx filter=lfs diff=lfs merge=lfs -text
+voice.bin filter=lfs diff=lfs merge=lfs -text
