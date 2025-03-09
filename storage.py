@@ -7,15 +7,27 @@ from datetime import datetime
 # Define the storage file path (e.g., `storage.json` in the current directory)
 STORE_FILE = "storage.json"
 
-def save_record(question: dict, code: str, video_path: str):
-    """Save a record of a problem-solving session, including the question content, generated code, and video path."""
+def save_record(question, animation_prompt=None, manim_code=None, video_path=None, error=None, fix_attempts=0):
+    """
+    Save a record of the animation generation attempt, including any errors.
     
+    Args:
+        question (str): The original question or parsed question
+        animation_prompt (str, optional): The generated animation description
+        manim_code (str, optional): The generated Manim code
+        video_path (str, optional): Path to the rendered video file
+        error (str, optional): Error message if any step failed
+        fix_attempts (int, optional): Number of fix attempts made
+    """
     record = {
-        "question": question.get("content", ""),
-        "format": question.get("format", ""),
-        "code": code,
-        "video_path": video_path,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        'timestamp': datetime.now().isoformat(),
+        'question': question,
+        'animation_prompt': animation_prompt,
+        'manim_code': manim_code,
+        'video_path': video_path,
+        'error': error,
+        'fix_attempts': fix_attempts,
+        'status': 'success' if not error else 'failed'
     }
     
     # Read existing records

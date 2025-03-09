@@ -9,6 +9,8 @@ re
 sys
 manim
 streamlit
+ollama
+git+https://github.com/xposed73/kokoro-manim-voiceover.git
 
 # LLM Integration
 openai
