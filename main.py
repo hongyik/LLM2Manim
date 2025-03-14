@@ -1,70 +1,108 @@
 # main.py
 import sys
+import logging
+import asyncio
+from typing import Dict, Any, Optional
 from input_processing import parse_input
-from prompt_generation import generate_prompt
-from code_generation import generate_code
-from render import render_animation
-from storage import save_record
-from config import OUTPUT_DIR
-from auto_fix import attempt_fix_code
+from parallel_processing import generate_parallel_animation
+from parallel_code_generation import generate_parallel_code
+from error_check import test_all_scenes, save_test_results
+from fix_scenes import fix_failed_scenes
+from combine_scenes import render_combined_scene
+from process_summary import save_process_summary
+def process_visualization(user_input: str) -> Dict[str, Any]:
+    """
+    Process a mathematical visualization request to generate descriptions and code.
+    
+    Args:
+        user_input (str): The user's mathematical/physics problem description
+        
+    Returns:
+        Dict[str, Any]: Process results including descriptions and code for each step
+    """
+    result = {
+        "status": "success",
+        "stages": {},
+        "error": None
+    }
+    
+    try:
+        # Stage 1: Parse input
+        print("\n📝 Stage 1/6: Parsing input...")
+        parsed_input = parse_input(user_input)
+        result["stages"]["input_analysis"] = {
+            "content": parsed_input["content"]
+        }
+        
+        # Stage 2: Generate structured animation descriptions
+        print("\n🤖 Stage 2/6: Generating structured animation descriptions...")
+        parallel_result = generate_parallel_animation(parsed_input)
+        result["stages"]["descriptions"] = {
+            "step_results": parallel_result["step_results"]
+        }
+        
+        # Stage 3: Generate Manim code for each step
+        print("\n💻 Stage 3/6: Generating Manim code for each step...")
+        code_result = generate_parallel_code(result)
+        result["stages"]["code_generation"] = code_result
+        
+        # Stages 4-5: Test and fix scenes in a loop until all pass or max retries reached
+        MAX_FIX_ATTEMPTS = 2
+        attempt = 1
+        all_scenes_pass = False
+        
+        while not all_scenes_pass and attempt <= MAX_FIX_ATTEMPTS:
+            print(f"\n📋 Fix Attempt {attempt}/{MAX_FIX_ATTEMPTS}")
+            
+            # Stage 4: Test individual scenes
+            print("\n🧪 Stage 4/6: Testing individual scenes...")
+            test_results = test_all_scenes()
+            save_test_results(test_results)
+            result["stages"][f"scene_testing_attempt_{attempt}"] = test_results
+            
+            # Check if all scenes pass
+            if test_results["status"] == "success":
+                print("\n✅ All scenes passed testing!")
+                all_scenes_pass = True
+                break
+                
+            # Stage 5: Fix failed scenes
+            print(f"\n🔧 Stage 5/6: Fixing failed scenes (Attempt {attempt}/{MAX_FIX_ATTEMPTS})...")
+            fix_results = fix_failed_scenes()
+            result["stages"][f"scene_fixing_attempt_{attempt}"] = fix_results
+            
+            attempt += 1
+        
+        # Stage 6: Combine all generated code parts
+        print("\n🔄 Stage 6/6: Rendering final animation...")
+        combine_result = render_combined_scene(input_dir="animation_outputs", output_dir="final_animation")
+        result["stages"]["combined_scene_path"] = combine_result
+        
+    except Exception as e:
+        error_msg = f"Process failed: {str(e)}"
+        logging.error(error_msg)
+        result["status"] = "error"
+        result["error"] = error_msg
+    
+    return result
 
-def main():    
-    # Get user input from the command line or other interfaces
+def main():
+    # Configure logging - only show errors
+    logging.basicConfig(
+        level=logging.ERROR,
+        format='%(message)s'
+    )
+    
+    # Get user input
     if len(sys.argv) > 1:
         user_input = sys.argv[1]
     else:
         user_input = input("Please enter a math/physics problem description: ")
     
-    print("\n🚀 Starting animation generation process...")
-    
-    question = None
-    animation_prompt = None
-    manim_code = None
-    video_path = None
-    error_msg = None
-
-    try:
-        # 1. Parse user input
-        print("\n📝 Stage 1/5: Parsing user input...")
-        question = parse_input(user_input)
-        print("✅ Input parsed successfully")
-        
-        # 2. Call the LLM to generate the derivation process and animation description
-        print("\n🤖 Stage 2/5: Generating animation description...")
-        animation_prompt = generate_prompt(question)
-        print("✅ Animation description generated")
-        
-        # 3. Call the coding LLM to generate Manim Python code
-        print("\n💻 Stage 3/5: Generating Manim code...")
-        manim_code = generate_code(animation_prompt)
-        print("✅ Manim code generated")
-        
-        # 4. Render the Manim animation video with auto-fix attempts
-        print("\n🎬 Stage 4/5: Rendering animation...")
-        video_path, fix_attempts = attempt_fix_code(manim_code, max_attempts=2)
-        
-    except Exception as e:
-        error_msg = f"Error: Animation generation failed due to: {str(e)}"
-        print(f"\n❌ {error_msg}")
-    
-    finally:
-        # 5. Save the record to local storage
-        print("\n💾 Stage 5/5: Saving records...")
-        save_record(
-            question=question or user_input,
-            animation_prompt=animation_prompt,
-            manim_code=manim_code,
-            video_path=video_path,
-            error=error_msg,
-            fix_attempts=fix_attempts if 'fix_attempts' in locals() else 0
-        )
-        print("✅ Records saved successfully")
-        
-        if not error_msg:
-            print("\n✨ All stages completed successfully!")
-        else:
-            print(f"\n⚠️ Process completed with errors")
-
+    # Run the async process
+    result = process_visualization(user_input)
+    return result
 
 if __name__ == "__main__":
-    main()
+    result = main()
+    save_process_summary(result)

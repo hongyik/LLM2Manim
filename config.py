@@ -1,10 +1,14 @@
 # config.py
 # LLM API keys and options
-GPT4_API_KEY = "sk-TmeRzxqaqBwUEfz2FHi3S73k9siM6gsBBrPDc0JXkcZb8xH9"  # "Your OpenAI API key"
+import os
+DeepSeek_Prompt_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+# GPT4_API_KEY = "sk-TmeRzxqaqBwUEfz2FHi3S73k9siM6gsBBrPDc0JXkcZb8xH9"  # "Your OpenAI API key"
+GPT4_API_KEY = "sk-974L3UWhpQQPh1Ec19KXDSkabFW7ics5Fu7y9C8im9My4nOZ"  # Replace with your actual GPT-4 API key
 CLAUDE_API_KEY = "Claude API key"
 USE_CLAUDE = False 
 USE_GPT = True
 Free_Web = "https://api.chatanywhere.tech/v1"
+DeepSeek_Web="https://api.deepseek.com/v1"
 
 # Manim configuration
 MANIM_CLI_PATH = "C:\\Users\\kehon\\AppData\\Roaming\\Python\\Python312\\Scripts\\manim.exe"  # Path to the Manim executable

@@ -1,0 +1,29 @@
+{
+  "steps": [
+    "INTUITIVE_OPENING_AND_LEARNING_OBJECTIVES",
+    "PRECISE_DEFINITIONS",
+    "FORMULA_PRESENTATION_AND_ANNOTATION",
+    "ANIMATED_DERIVATION",
+    "REAL_WORLD_EXAMPLES",
+    "RELATED_CONCEPT_CONNECTION",
+    "INTERACTIVE_SUMMARY_OR_QUIZ"
+  ],
+  "system_prompts": {
+    "INTUITIVE_OPENING_AND_LEARNING_OBJECTIVES": "Create an engaging opening scene using intuitive explanations, thought-provoking questions, or real-life scenarios to immediately capture viewers' attention. Clearly list explicit learning objectives viewers should achieve by the end of the video. Explicitly detail visual aids (animations, diagrams, graphical elements) you will use to illustrate key points.",
+    "PRECISE_DEFINITIONS": "Clearly define all key terms, symbols, and concepts related to the topic. Explicitly describe visual animations (e.g., Write, FadeIn, Indicate) to enhance clarity and viewer understanding.",
+    "FORMULA_PRESENTATION_AND_ANNOTATION": "Clearly present and explicitly annotate relevant formulas. Explain every variable and term with narration and include detailed visual animations (ReplacementTransform, Indicate, Write) describing each step clearly.",
+    "ANIMATED_DERIVATION": "Provide an explicit, step-by-step derivation or problem-solving animation. Clearly detail each step, including exact Manim animation instructions (Transform, ReplacementTransform, Indicate), object positioning (e.g., VGroup, shift(), to_edge()), and synchronized narration.",
+    "REAL_WORLD_EXAMPLES": "Present at least two practical, real-world scenarios to illustrate the concept. Include numeric examples, explicit animation instructions, and detailed visual narration for each scenario.",
+    "RELATED_CONCEPT_CONNECTION": "Clearly illustrate and explicitly describe prerequisites needed to understand the current topic and implications or advanced topics it leads to. Visually connect these concepts explicitly, with clear animation instructions.",
+    "INTERACTIVE_SUMMARY_OR_QUIZ": "Suggest an interactive quiz or summary at the end of the video. Provide explicit instructions for animations accompanying quiz questions or summaries to reinforce viewer comprehension clearly."
+  },
+  "user_prompts": {
+    "INTUITIVE_OPENING_AND_LEARNING_OBJECTIVES": "Create an engaging, intuitive opening and explicitly outline clear learning objectives for explaining: {topic}. Provide detailed visual animation instructions.",
+    "PRECISE_DEFINITIONS": "Define all relevant terms, symbols, and concepts clearly for: {topic}. Explicitly describe visual aids and animation instructions for clarity.",
+    "FORMULA_PRESENTATION_AND_ANNOTATION": "Present and clearly annotate formulas involved in: {topic}. Explicitly detail visual animation steps for each formula term.",
+    "ANIMATED_DERIVATION": "Explicitly describe step-by-step animated derivations or solutions for formulas related to: {topic}. Include clear animation and narration instructions.",
+    "REAL_WORLD_EXAMPLES": "Detail explicit real-world scenarios and numerical examples that clearly demonstrate the application of: {topic}. Structure animations and narration explicitly for clarity.",
+    "RELATED_CONCEPT_CONNECTION": "Clearly outline concepts or prior knowledge necessary for understanding {topic}, and explicitly discuss subsequent implications or advanced concepts that follow. Provide visual animation details for clear understanding.",
+    "INTERACTIVE_SUMMARY_OR_QUIZ": "Propose a clear interactive quiz or concise summary for the concept: {topic}. Provide explicit details for animations and visualizations to clearly reinforce understanding."
+  }
+}
