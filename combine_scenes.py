@@ -14,7 +14,7 @@ def load_scene_files(input_dir: str) -> Dict[str, str]:
     
     # Load descriptions.json
     descriptions_path = os.path.join(input_dir, "descriptions.json")
-    with open(descriptions_path, 'r') as f:
+    with open(descriptions_path, 'r', encoding='utf-8') as f:
         descriptions = json.load(f)
     
     # Map step names to file paths
