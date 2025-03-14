@@ -1,17 +1,28 @@
-# Core Python Libraries
-logging
-json
-os
-subprocess
-uuid
-datetime
-re
-sys
-manim
-streamlit
-ollama
-git+https://github.com/xposed73/kokoro-manim-voiceover.git
+# Core Dependencies
+openai>=1.0.0  # For OpenAI API
+anthropic>=0.3.0  # For Claude API
+numpy>=1.24.0  # For numerical computations
+requests>=2.31.0  # For HTTP requests
 
-# LLM Integration
-openai
-anthropic  #Claude API
+# Animation and Visualization
+manim>=0.17.3  # For mathematical animations
+manim-voiceover>=0.3.0  # For voiceover support
+git+https://github.com/xposed73/kokoro-manim-voiceover.git  # Custom voiceover
+
+# LLM and AI
+ollama>=0.1.0  # For local LLM support
+
+# Async and Parallel Processing
+aiohttp>=3.9.0  # For async HTTP requests
+asyncio>=3.4.3  # For async operations
+
+# Web Framework
+streamlit>=1.29.0  # For web interface
+
+# Development Tools
+typing-extensions>=4.8.0  # For type hints
+python-dotenv>=1.0.0  # For environment variables
+
+# System Requirements
+Python>=3.8
+Node.js>=14.0.0  # For mermaid-cli
