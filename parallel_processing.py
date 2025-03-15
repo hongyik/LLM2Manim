@@ -58,7 +58,7 @@ async def call_llm_api(client: AsyncOpenAI, step: str, system_prompt: str, user_
                 {"role": "user", "content": user_prompt}
             ],
             max_tokens=2048,
-            temperature=0.7,
+            temperature=1.5,
             stream=False
         )
         return response.choices[0].message.content
@@ -118,12 +118,21 @@ def generate_parallel_animation(parsed_input: Dict[str, Any]) -> Dict[str, Any]:
     output_dir = "animation_outputs"
     os.makedirs(output_dir, exist_ok=True)
     
-    # Save as JSON for easy parsin
+    # Save as JSON for easy parsing
     json_path = os.path.join(output_dir, "descriptions.json")
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(step_results, f, indent=2, ensure_ascii=False)
     
-    logging.info(f"\n💾 Descriptions saved to {output_dir}/descriptions.txt")
+    # Save as formatted text for easier reading
+    txt_path = os.path.join(output_dir, "descriptions.txt")
+    with open(txt_path, 'w', encoding='utf-8') as f:
+        for step, content in step_results.items():
+            f.write(f"\n{'='*50}\n")
+            f.write(f"{step}\n")
+            f.write(f"{'='*50}\n\n")
+            f.write(f"{content}\n\n")
+    
+    logging.info(f"\n💾 Descriptions saved to:\n- {json_path}\n- {txt_path}")
     
     # Prepare the result
     result = {
@@ -134,4 +143,4 @@ def generate_parallel_animation(parsed_input: Dict[str, Any]) -> Dict[str, Any]:
 if __name__ == "__main__":
 
     # Test the animation generation
-    generate_parallel_animation({"content": "Mass conservation in fluid dynamics"})
+    generate_parallel_animation({"content": "Reynolds Transport Theorem"})

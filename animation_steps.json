@@ -5,25 +5,32 @@
     "FORMULA_PRESENTATION_AND_ANNOTATION",
     "ANIMATED_DERIVATION",
     "REAL_WORLD_EXAMPLES",
-    "RELATED_CONCEPT_CONNECTION",
-    "INTERACTIVE_SUMMARY_OR_QUIZ"
+    "RELATED_CONCEPT_CONNECTION"
   ],
   "system_prompts": {
-    "INTUITIVE_OPENING_AND_LEARNING_OBJECTIVES": "Create an engaging opening scene using intuitive explanations, thought-provoking questions, or real-life scenarios to immediately capture viewers' attention. Clearly list explicit learning objectives viewers should achieve by the end of the video. Explicitly detail visual aids (animations, diagrams, graphical elements) you will use to illustrate key points.",
-    "PRECISE_DEFINITIONS": "Clearly define all key terms, symbols, and concepts related to the topic. Explicitly describe visual animations (e.g., Write, FadeIn, Indicate) to enhance clarity and viewer understanding.",
-    "FORMULA_PRESENTATION_AND_ANNOTATION": "Clearly present and explicitly annotate relevant formulas. Explain every variable and term with narration and include detailed visual animations (ReplacementTransform, Indicate, Write) describing each step clearly.",
-    "ANIMATED_DERIVATION": "Provide an explicit, step-by-step derivation or problem-solving animation. Clearly detail each step, including exact Manim animation instructions (Transform, ReplacementTransform, Indicate), object positioning (e.g., VGroup, shift(), to_edge()), and synchronized narration.",
-    "REAL_WORLD_EXAMPLES": "Present at least two practical, real-world scenarios to illustrate the concept. Include numeric examples, explicit animation instructions, and detailed visual narration for each scenario.",
-    "RELATED_CONCEPT_CONNECTION": "Clearly illustrate and explicitly describe prerequisites needed to understand the current topic and implications or advanced topics it leads to. Visually connect these concepts explicitly, with clear animation instructions.",
-    "INTERACTIVE_SUMMARY_OR_QUIZ": "Suggest an interactive quiz or summary at the end of the video. Provide explicit instructions for animations accompanying quiz questions or summaries to reinforce viewer comprehension clearly."
+    "INTUITIVE_OPENING_AND_LEARNING_OBJECTIVES": "Introduce {topic} with an engaging scenario, analogy, or problem that naturally transitions into learning objectives. Use dynamic animations (e.g., FadeIn, MoveTo, Transform) to visualize the concept intuitively. Clearly highlight key elements (Indicate, Highlight) and ensure seamless narration for engagement. Provide detailed movement and transitions for graphical elements, explicitly explaining why each visual is introduced. End with a fade-out or repositioning to transition smoothly into the next section.",
+    
+    "PRECISE_DEFINITIONS": "Define key terms visually using animations (Write, Highlight, Indicate). Introduce each term sequentially, ensuring clarity through visual emphasis and object motion. Sync narration with object transformations, explicitly stating why each term is introduced and what it implies. Ensure animations facilitate understanding rather than just decoration, reinforcing conceptual depth. Provide detailed movement, highlighting, and transitions for each term and definition.",
+    
+    "FORMULA_PRESENTATION_AND_ANNOTATION": "Present formulas step-by-step, annotating key elements dynamically. Use Write for sequential appearance, Transform for logical transitions, and Indicate to emphasize crucial variables. Synchronize narration with animations, explaining why terms change and what each transformation implies. Ensure every movement serves a didactic purpose, reinforcing intuition behind the equations. Use ReplacementTransform to show formula evolution and ensure clear highlighting of modifications.",
+    
+    "ANIMATED_DERIVATION": "Break down derivations into discrete animation steps. Use FadeIn for initial setup, Transform for algebraic manipulations, and Indicate for crucial logical steps. Narration should explicitly explain each mathematical transition, reinforcing the reasoning behind operations. Ensure visual elements align with conceptual explanations, using spatial movement to depict logical flow. Highlight inferences at every step, ensuring students grasp not just 'how' but 'why' the derivation unfolds as it does.",
+    
+    "REAL_WORLD_EXAMPLES": "Demonstrate {topic} through practical scenarios. Animate real-world settings (e.g., objects in motion, fluid flows, market trends) where the formula is applicable. Introduce equations dynamically (Write, FadeIn), then update values based on real-time changes (Transform). Use Indicate to emphasize key observations, ensuring narration explains how the scenario illustrates the core concept. Provide numerical examples where applicable, dynamically updating parameters to reinforce learning.",
+    
+    "RELATED_CONCEPT_CONNECTION": "Map {topic} to previous and future concepts using structured visual progressions. Use MoveTo and Transform to transition between related ideas, visually linking topics through animated diagrams or flowcharts. Ensure narration explicitly states how concepts interconnect, reinforcing learning continuity. Introduce prerequisite knowledge dynamically and highlight future applications through smooth scene transitions (FadeIn, ReplacementTransform). End with a clear summary of connections."
   },
   "user_prompts": {
-    "INTUITIVE_OPENING_AND_LEARNING_OBJECTIVES": "Create an engaging, intuitive opening and explicitly outline clear learning objectives for explaining: {topic}. Provide detailed visual animation instructions.",
-    "PRECISE_DEFINITIONS": "Define all relevant terms, symbols, and concepts clearly for: {topic}. Explicitly describe visual aids and animation instructions for clarity.",
-    "FORMULA_PRESENTATION_AND_ANNOTATION": "Present and clearly annotate formulas involved in: {topic}. Explicitly detail visual animation steps for each formula term.",
-    "ANIMATED_DERIVATION": "Explicitly describe step-by-step animated derivations or solutions for formulas related to: {topic}. Include clear animation and narration instructions.",
-    "REAL_WORLD_EXAMPLES": "Detail explicit real-world scenarios and numerical examples that clearly demonstrate the application of: {topic}. Structure animations and narration explicitly for clarity.",
-    "RELATED_CONCEPT_CONNECTION": "Clearly outline concepts or prior knowledge necessary for understanding {topic}, and explicitly discuss subsequent implications or advanced concepts that follow. Provide visual animation details for clear understanding.",
-    "INTERACTIVE_SUMMARY_OR_QUIZ": "Propose a clear interactive quiz or concise summary for the concept: {topic}. Provide explicit details for animations and visualizations to clearly reinforce understanding."
+    "INTUITIVE_OPENING_AND_LEARNING_OBJECTIVES": "Create an engaging introduction for {topic} using a relatable analogy or real-world problem. Ensure a smooth transition into learning objectives.\n\nExample:\n- 'A fluid particle moves from left to right, changing temperature dynamically...'\n- Use FadeIn for the initial setup, Indicate to highlight key terms, and Transform to smoothly transition to formal equations.\n- Narration: 'Imagine a car accelerating. What governs its motion? Let's break it down...'",
+    
+    "PRECISE_DEFINITIONS": "Define key terms in {topic}, ensuring animations reinforce conceptual clarity. Specify movement, highlighting, and transitions.\n\nExample:\n- 'Velocity appears on screen using Write, with a moving object demonstrating change in position (MoveAlongPath).'\n- 'Indicate highlights acceleration as speed changes.'\n- Narration: 'Velocity tells us how position changes over time. Watch how it increases here...'",
+    
+    "FORMULA_PRESENTATION_AND_ANNOTATION": "Present and annotate relevant formulas in {topic}. Ensure formulas build step-by-step, with key terms dynamically highlighted.\n\nExample:\n- 'Equation appears using Write, with each variable Indicated as explained.'\n- 'Transform modifies equations dynamically as terms evolve.'\n- Narration: 'Observe how force depends on mass and acceleration. Now let's break it down...'",
+    
+    "ANIMATED_DERIVATION": "Provide a step-by-step animated derivation for {topic}. Clearly show transformations and highlight logical steps.\n\nExample:\n- 'Start with FadeIn of initial equation.'\n- 'Apply algebraic manipulation using ReplacementTransform, synchronizing narration with each step.'\n- 'Final equation Indicated with explanation: \"From this, we derive...\"'",
+    
+    "REAL_WORLD_EXAMPLES": "Illustrate {topic} with real-world applications. Use dynamic animation to reinforce practical understanding.\n\nExample:\n- 'A fire hose sprays water at 20 m/s through a nozzle. The equation ṁ = ρAV dynamically updates as velocity changes.'\n- 'Highlight pressure variations using Indicate.'\n- Narration: 'Notice how increasing velocity changes the mass flow rate. This principle applies in...'",
+    
+    "RELATED_CONCEPT_CONNECTION": "Demonstrate how {topic} connects to past and future concepts using visual transitions.\n\nExample:\n- 'Mass conservation introduced first, then Transform leads to continuity equation.'\n- 'Show Eulerian vs Lagrangian perspectives using MoveTo.'\n- Narration: 'Since we understand mass conservation, we now extend this to momentum conservation, leading to...'"
   }
 }

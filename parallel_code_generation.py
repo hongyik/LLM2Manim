@@ -23,7 +23,7 @@ async def generate_code_for_step(client: AsyncOpenAI, step: str, description: st
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            max_tokens=8192,
+            max_tokens=1024,
             temperature=0,
             stream=False
         )
@@ -41,7 +41,7 @@ async def generate_code_for_step(client: AsyncOpenAI, step: str, description: st
     except Exception as e:
         return f"Error generating code for {step}: {str(e)}"
 
-async def process_all_code_steps(descriptions: Dict[str, Any], system_prompt: str, user_prompt: str) -> Dict[str, str]:
+async def process_all_code_steps(descriptions: Dict[str, Any]) -> Dict[str, str]:
     """Generate code for all animation steps in parallel."""
     client = AsyncOpenAI(
         api_key=gpt_api,
@@ -50,6 +50,9 @@ async def process_all_code_steps(descriptions: Dict[str, Any], system_prompt: st
     
     tasks = []
     for step, data in descriptions.items():
+        description = data["description"]
+        system_prompt, user_prompt = prompt_template_code(description)
+        print(user_prompt)
         task = generate_code_for_step(client, step, data["description"], system_prompt, user_prompt)
         tasks.append(task)
     
@@ -67,11 +70,9 @@ def generate_parallel_code(stage2_output: Dict[str, Any]) -> Dict[str, Any]:
     """Generate Manim code for each animation step in parallel."""
 
     descriptions = stage2_output["stages"]["descriptions"]["step_results"]
-    system_prompt, user_prompt = prompt_template_code(descriptions)
-      
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    code_results = loop.run_until_complete(process_all_code_steps(descriptions, system_prompt, user_prompt))
+    code_results = loop.run_until_complete(process_all_code_steps(descriptions))
     loop.close()
         
     # Create output directory
