@@ -17,7 +17,7 @@ aiohttp>=3.9.0  # For async HTTP requests
 asyncio>=3.4.3  # For async operations
 
 # Web Framework
-streamlit>=1.29.0  # For web interface
+streamlit>=1.24.0  # For web interface
 
 # Development Tools
 typing-extensions>=4.8.0  # For type hints
@@ -26,3 +26,7 @@ python-dotenv>=1.0.0  # For environment variables
 # System Requirements
 Python>=3.8
 Node.js>=14.0.0  # For mermaid-cli
+
+# Added from the code block
+pandas>=2.0.0
+pillow>=9.5.0

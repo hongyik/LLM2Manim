@@ -2,6 +2,7 @@ import json
 import os
 import re
 import subprocess
+import multiprocessing
 from typing import Dict, Any, List
 from config import MANIM_RENDER_QUALITY,MANIM_CLI_PATH
 
@@ -89,9 +90,24 @@ def test_single_scene(file_path: str) -> Dict[str, Any]:
             "type": "execution_error"
         }
 
+def _process_scene_result(scene_file: str, result: Dict[str, Any], results: Dict[str, Any]) -> None:
+    """Helper function to process a single scene test result and update the results dictionary."""
+    results["tested_files"].append(scene_file)
+    
+    if result["status"] == "success":
+        results["successful_files"].append(scene_file)
+        if "rendered_file" in result:
+            results["rendered_files"].append(result["rendered_file"])
+    else:
+        results["failed_files"].append(scene_file)
+        results["errors"][scene_file] = {
+            "error": result["error"],
+            "command": result.get("command", "N/A")
+        }
+
 def test_all_scenes(directory: str = "animation_outputs") -> Dict[str, Any]:
     """
-    Test all generated scene files in the specified directory.
+    Test all generated scene files in the specified directory in parallel.
     
     Args:
         directory: Directory containing the generated scene files
@@ -118,23 +134,21 @@ def test_all_scenes(directory: str = "animation_outputs") -> Dict[str, Any]:
             "error": "No scene files found to test"
         }
     
-    # Test each scene file
-    for scene_file in scene_files:
-        file_path = os.path.join(directory, scene_file)
-        results["tested_files"].append(scene_file)
+    # Create a pool of workers
+    # Use max(1, cpu_count - 1) workers to leave one CPU free for system tasks
+    num_workers = max(1, multiprocessing.cpu_count() - 1)
+    print(f"Testing {len(scene_files)} scenes using {num_workers} parallel workers...")
+    
+    with multiprocessing.Pool(num_workers) as pool:
+        # Create a list of file paths for testing
+        file_paths = [os.path.join(directory, scene_file) for scene_file in scene_files]
         
-        test_result = test_single_scene(file_path)
+        # Test scenes in parallel and get results
+        test_results = pool.map(test_single_scene, file_paths)
         
-        if test_result["status"] == "success":
-            results["successful_files"].append(scene_file)
-            if "rendered_file" in test_result:
-                results["rendered_files"].append(test_result["rendered_file"])
-        else:
-            results["failed_files"].append(scene_file)
-            results["errors"][scene_file] = {
-                "error": test_result["error"],
-                "command": test_result.get("command", "N/A")
-            }
+        # Process results
+        for scene_file, result in zip(scene_files, test_results):
+            _process_scene_result(scene_file, result, results)
     
     # Update overall status - only success if all files pass
     if results["failed_files"]:

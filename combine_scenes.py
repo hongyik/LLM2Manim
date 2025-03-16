@@ -111,13 +111,15 @@ def merge_videos_with_ffmpeg(rendered_videos: Dict[str, str], output_dir: str) -
             relative_path = os.path.join("individual_scenes", os.path.basename(video_path))
             f.write(f"file '{relative_path}'\n")
     
-    # Merge videos using ffmpeg
+    # Merge videos using ffmpeg with audio handling
     ffmpeg_cmd = [
         "ffmpeg", 
         "-f", "concat", 
         "-safe", "0", 
-        "-i", video_list_file, 
-        "-c", "copy",  # Copy without re-encoding for speed
+        "-i", video_list_file,
+        "-c:v", "copy",  # Copy video stream without re-encoding
+        "-c:a", "aac",   # Use AAC codec for audio
+        "-strict", "experimental",  # Allow experimental codecs
         "-y",  # Overwrite output file if it exists
         final_output
     ]
@@ -171,4 +173,4 @@ if __name__ == "__main__":
     # scene_files = {"reynolds": "ReynoldsTransportation.py","renolds_transportation": "ReynoldsTransportationcopy.py"}
     # #render_scenes_sequential(scene_files,"final_animation")
     #render_single_scene("example/ReynoldsTransportation.py","final_animation")
-    render_combined_scene("animation_outputs","final_animation")
+    render_combined_scene("example","final_animation")

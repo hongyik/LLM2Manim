@@ -23,7 +23,7 @@ async def generate_code_for_step(client: AsyncOpenAI, step: str, description: st
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            max_tokens=1024,
+            max_tokens=4096,
             temperature=0,
             stream=False
         )
@@ -52,7 +52,6 @@ async def process_all_code_steps(descriptions: Dict[str, Any]) -> Dict[str, str]
     for step, data in descriptions.items():
         description = data["description"]
         system_prompt, user_prompt = prompt_template_code(description)
-        print(user_prompt)
         task = generate_code_for_step(client, step, data["description"], system_prompt, user_prompt)
         tasks.append(task)
     
