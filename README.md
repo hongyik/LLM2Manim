@@ -1,4 +1,3 @@
-
 ## System Diagrams
 
 
@@ -25,7 +24,8 @@ graph TB
         %% Parallel Processing Clusters
         subgraph DescriptionGeneration[Description Generation Cluster]
             direction LR
-            E1 & E2 & E3 & E4 & E5 --> LLMD[LLM API]
+            E1 & E2 & E3 & E4 & E5 --> PE1[Prompt Engineering]
+            PE1 --> LLMD[LLM API]
             LLMD --> |Parallel Processing| AD1 & AD2 & AD3 & AD4 & AD5
         end
         
@@ -36,7 +36,8 @@ graph TB
             AD3[Animation Description 3]
             AD4[...]
             AD5[Animation Description N]
-            AD1 & AD2 & AD3 & AD4 & AD5 -->LLMC[LLM API]
+            AD1 & AD2 & AD3 & AD4 & AD5 --> PE2[Prompt Engineering]
+            PE2 --> LLMC[LLM API]
             LLMC -->|Parallel Processing| MC1 & MC2 & MC3 & MC4 & MC5
         end
 
@@ -73,6 +74,7 @@ classDef sceneImplementation fill:#e8f5e9,stroke:#2e7d32;
 classDef finalOutput fill:#e8eaf6,stroke:#283593;
 classDef llmAPI fill:#e1bee7,stroke:#6a1b9a;
 classDef processingCluster fill:#f5f5f5,stroke:#9e9e9e,stroke-dasharray: 5 5;
+classDef promptEngineering fill:#ffcdd2,stroke:#c62828;
 
 %% Apply styles to subgraphs
 class UserInteraction userInteraction;
@@ -81,5 +83,6 @@ class ParallelProcessing parallelProcessing;
 class SceneImplementation sceneImplementation;
 class FinalOutput finalOutput;
 class LLMD,LLMC llmAPI;
+class PE1,PE2 promptEngineering;
 class DescriptionGeneration,CodeGeneration processingCluster;
 ``` 
