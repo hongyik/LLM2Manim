@@ -1,7 +1,7 @@
 ```mermaid
 flowchart TD
 
-subgraph A1[1. Systems of Linear Equations and Matrix Representations]
+subgraph A1[Systems of Linear Equations and Matrix Representations]
     A1a[Systems of Linear Equations]
     A1b[Gauss-Jordan Elimination]
     A1c[Row Reduction & Solution Sets]
@@ -11,7 +11,7 @@ subgraph A1[1. Systems of Linear Equations and Matrix Representations]
     A1g[Vector Equations and Linear Combinations]
 end
 
-subgraph A2[2. Linear Transformations]
+subgraph A2[Linear Transformations]
     A2a[Introduction to Linear Transformations]
     A2b[Matrix of a Linear Transformation]
     A2c[Inverses of Linear Transformations]
@@ -20,14 +20,14 @@ subgraph A2[2. Linear Transformations]
     A2f[Applications to Differential Equations]
 end
 
-subgraph A3[3. Matrix Algebra]
+subgraph A3[Matrix Algebra]
     A3a[Matrix Operations]
     A3b[Inverse of a Matrix & Invertibility]
     A3c[Partitioned Matrices]
     A3d[Matrix Products and Composition]
 end
 
-subgraph A4[4. Subspaces and Dimension]
+subgraph A4[Subspaces and Dimension]
     A4a[Subspaces of R^n]
     A4b[Null Space, Column Space, Image and Kernel]
     A4c[Basis and Linear Independence]
@@ -36,14 +36,14 @@ subgraph A4[4. Subspaces and Dimension]
     A4f[Applications to Markov Chains]
 end
 
-subgraph A5[5. Determinants]
+subgraph A5[Determinants]
     A5a[Introduction to Determinants]
     A5b[Properties of Determinants]
     A5c[Geometric Interpretation, Cramer's Rule, Volume]
     A5d[Permutation Matrices]
 end
 
-subgraph A6[6. Orthogonality and Least Squares]
+subgraph A6[Orthogonality and Least Squares]
     A6a[Inner Product, Norm, Orthogonality]
     A6b[Orthogonal Projections]
     A6c[Gram-Schmidt and QR Factorization]
@@ -51,7 +51,7 @@ subgraph A6[6. Orthogonality and Least Squares]
     A6e[Least Squares & Data Fitting]
 end
 
-subgraph A7[7. Eigenvalues and Eigenvectors]
+subgraph A7[Eigenvalues and Eigenvectors]
     A7a[Introduction via Dynamical Systems]
     A7b[Finding Eigenvalues]
     A7c[Finding Eigenvectors]
@@ -61,18 +61,18 @@ subgraph A7[7. Eigenvalues and Eigenvectors]
     A7g[Applications in Differential Equations]
 end
 
-subgraph A8[8. Symmetric Matrices and Quadratic Forms]
+subgraph A8[Symmetric Matrices and Quadratic Forms]
     A8a[Diagonalization of Symmetric Matrices]
     A8b[Quadratic Forms]
     A8c[Singular Value Decomposition SVD]
 end
 
-subgraph A9[9. Abstract Linear Spaces]
+subgraph A9[Abstract Linear Spaces]
     A9a[General Vector Spaces & Subspaces]
     A9b[Review of Coordinate Systems and Advanced Spaces]
 end
 
-subgraph A10[10. Optional Topics in Differential Equations]
+subgraph A10[Optional Topics in Differential Equations]
     A10a[ODEs, PDEs, Fourier Series]
 end
 
