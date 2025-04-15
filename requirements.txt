@@ -8,7 +8,7 @@ requests>=2.31.0  # For HTTP requests
 manim>=0.17.3  # For mathematical animations
 manim-voiceover>=0.3.0  # For voiceover support
 git+https://github.com/xposed73/kokoro-manim-voiceover.git  # Custom voiceover
-
+#pip install git+https://github.com/xposed73/kokoro-manim-voiceover.git
 # LLM and AI
 ollama>=0.1.0  # For local LLM support
 
