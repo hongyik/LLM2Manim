@@ -1,0 +1,26 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+Amp-venv/
+.venv/
+venv/
+
+# Manim / generated media
+media/
+videos/
+images/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Large model / binary assets (do not commit)
+*.onnx
+*.bin

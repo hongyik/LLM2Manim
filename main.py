@@ -1,108 +1,37 @@
-# main.py
-import sys
+"""
+Pipeline runs as a LangGraph: each stage is a node.
+  parse -> planner -> step_descriptions -> code_gen -> scene_fix -> render -> END
+"""
 import logging
-import asyncio
-from typing import Dict, Any, Optional
-from input_processing import parse_input
-from parallel_processing import generate_parallel_animation
-from parallel_code_generation import generate_parallel_code
-from error_check import test_all_scenes, save_test_results
-from fix_scenes import fix_failed_scenes
-from combine_scenes import render_combined_scene
-from process_summary import save_process_summary
-def process_visualization(user_input: str) -> Dict[str, Any]:
-    """
-    Process a mathematical visualization request to generate descriptions and code.
-    
-    Args:
-        user_input (str): The user's mathematical/physics problem description
-        
-    Returns:
-        Dict[str, Any]: Process results including descriptions and code for each step
-    """
-    result = {
-        "status": "success",
-        "stages": {},
-        "error": None
-    }
-    
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from config import RUN_DIR, OUTPUT_DIR, FINAL_VIDEO_DIR
+from agent.pipeline_graph import run_pipeline
+
+
+def process_visualization(user_input: str) -> dict:
+    """Run the full pipeline via LangGraph (each stage is a node)."""
     try:
-        # Stage 1: Parse input
-        print("\n📝 Stage 1/6: Parsing input...")
-        parsed_input = parse_input(user_input)
-        result["stages"]["input_analysis"] = {
-            "content": parsed_input["content"]
-        }
-        
-        # Stage 2: Generate structured animation descriptions
-        print("\n🤖 Stage 2/6: Generating structured animation descriptions...")
-        parallel_result = generate_parallel_animation(parsed_input)
-        result["stages"]["descriptions"] = {
-            "step_results": parallel_result["step_results"]
-        }
-        
-        # Stage 3: Generate Manim code for each step
-        print("\n💻 Stage 3/6: Generating Manim code for each step...")
-        code_result = generate_parallel_code(result)
-        result["stages"]["code_generation"] = code_result
-        
-        # Stages 4-5: Test and fix scenes in a loop until all pass or max retries reached
-        MAX_FIX_ATTEMPTS = 2
-        attempt = 1
-        all_scenes_pass = False
-        
-        while not all_scenes_pass and attempt <= MAX_FIX_ATTEMPTS:
-            print(f"\n📋 Fix Attempt {attempt}/{MAX_FIX_ATTEMPTS}")
-            
-            # Stage 4: Test individual scenes
-            print("\n🧪 Stage 4/6: Testing individual scenes...")
-            test_results = test_all_scenes()
-            save_test_results(test_results)
-            result["stages"][f"scene_testing_attempt_{attempt}"] = test_results
-            
-            # Check if all scenes pass
-            if test_results["status"] == "success":
-                print("\n✅ All scenes passed testing!")
-                all_scenes_pass = True
-                break
-                
-            # Stage 5: Fix failed scenes
-            print(f"\n🔧 Stage 5/6: Fixing failed scenes (Attempt {attempt}/{MAX_FIX_ATTEMPTS})...")
-            fix_results = fix_failed_scenes()
-            result["stages"][f"scene_fixing_attempt_{attempt}"] = fix_results
-            
-            attempt += 1
-        
-        # Stage 6: Combine all generated code parts
-        print("\n🔄 Stage 6/6: Rendering final animation...")
-        combine_result = render_combined_scene(input_dir="animation_outputs", output_dir="final_animation")
-        result["stages"]["combined_scene_path"] = combine_result
-        
+        return run_pipeline(user_input)
     except Exception as e:
-        error_msg = f"Process failed: {str(e)}"
-        logging.error(error_msg)
-        result["status"] = "error"
-        result["error"] = error_msg
-    
-    return result
+        logging.exception("Pipeline failed")
+        return {"status": "error", "stages": {}, "error": str(e)}
+
 
 def main():
-    # Configure logging - only show errors
-    logging.basicConfig(
-        level=logging.ERROR,
-        format='%(message)s'
-    )
-    
-    # Get user input
-    if len(sys.argv) > 1:
-        user_input = sys.argv[1]
-    else:
-        user_input = input("Please enter a math/physics problem description: ")
-    
-    # Run the async process
+    logging.basicConfig(level=logging.ERROR, format="%(message)s")
+    user_input = sys.argv[1] if len(sys.argv) > 1 else input("Math/physics topic: ")
     result = process_visualization(user_input)
+    if result["status"] == "success":
+        print("\n✅ Done. Run folder:", RUN_DIR)
+        print("   animation_outputs:", OUTPUT_DIR, "| final_animation:", FINAL_VIDEO_DIR)
+    else:
+        print("\n❌ Error:", result.get("error"))
     return result
 
+
 if __name__ == "__main__":
-    result = main()
-    save_process_summary(result)
+    main()

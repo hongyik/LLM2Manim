@@ -1,245 +1,165 @@
-# Animated Math and Physics Visualization System
+# LangChain Agent Version – Animated Math & Physics
 
-A powerful system that generates educational animations for mathematical and physics concepts using Manim and AI.
+This folder implements the same animation pipeline as the parent project using **LangChain** in an **agent-like** way, with:
 
-## Features
+1. **Dynamic animation plan** – Stage 2 is not fixed; the number and content of steps depend on the user input (e.g. simple topic → fewer steps, complex topic → more steps).
+2. **Step memory** – When generating each step’s description, the agent sees the **full plan** and the **descriptions of all previous steps**, so the narrative stays consistent and each step builds on the others.
 
-- 🎯 Generate educational animations from natural language descriptions
-- 🤖 AI-powered content generation and code creation
-- 🎨 High-quality mathematical animations using Manim
-- 🔊 Voiceover support for enhanced learning experience
-- 🔄 Parallel processing for efficient generation
-- 🧪 Automatic testing and error fixing
-- 🌐 Web interface for easy interaction
+## Pipeline
 
-## Prerequisites
+The pipeline is a **LangGraph**: each stage is a node. To visualize it and save a diagram:
 
-- Python 3.8 or higher
-- Node.js 14.0 or higher
-- FFmpeg (for video rendering)
-
-## Installation
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Animated-math-and-physics.git
-cd Animated-math-and-physics
+cd langchain_agent
+python visualize_pipeline.py   # or use your venv Python
 ```
 
-2. Install Python dependencies:
+This writes `pipeline_graph.md` (Mermaid, renders on GitHub), `pipeline_graph.mmd`, and optionally `pipeline_graph.png`. See [pipeline_graph.md](pipeline_graph.md) for the diagram.
+
+| Stage | What it does |
+|-------|----------------|
+| 1 | Parse user input (topic/concept). |
+| 2 | **Planner agent**: From the topic, produce a structured plan (list of steps with `id` and `goal`). Plan is **dynamic** (depends on input). |
+| 3 | **Step agent**: For each step, generate an animation description with **memory** of the plan and all previous step descriptions. |
+| 4 | **Code agent**: Generate Manim code for each step (reuses parent project’s code prompts). |
+| 5 | **LangGraph auto-fix**: For each scene, validate (run Manim); if it fails, LLM fixes the code and we re-validate in a loop (up to 2 attempts per scene). |
+| 6 | **Render & combine**: Render each step’s Manim scene **in parallel**, then concatenate all videos (in plan order) into one final MP4 using FFmpeg. |
+
+## Setup
+
+From the repo root (or from this folder):
+
 ```bash
+cd langchain_agent
 pip install -r requirements.txt
 ```
 
-3. Install Manim:
+Set API keys (same as parent project), e.g. in a `.env` in the repo root:
+
+- `DEEPSEEK_API_KEY` (or use `LLM_PROVIDER=openai` and `GPT4_API_KEY`)
+
+### Per-stage API/model selection
+
+Each stage can use a **different** provider and model. Set these in your environment (or `.env`):
+
+| Variable | Default | Description |
+|----------|--------|-------------|
+| `LLM_PROVIDER` | `deepseek` | Fallback when a stage does not set its own. |
+| `PLANNER_PROVIDER` | same as `LLM_PROVIDER` | Provider: `deepseek`, `openai`, or `anthropic`. |
+| `PLANNER_MODEL` | per-provider default | Model for the planner. |
+| `STEP_PROVIDER` | same as `LLM_PROVIDER` | Provider for the step-description stage. |
+| `STEP_MODEL` | per-provider default | Model for step descriptions. |
+| `CODE_PROVIDER` | same as `LLM_PROVIDER` | Provider for the code-generation stage. |
+| `CODE_MODEL` | per-provider default | Model for Manim code generation. |
+
+For **anthropic** (Claude): set `ANTHROPIC_API_KEY` and optionally `ANTHROPIC_MODEL`; install with `pip install langchain-anthropic`.
+
+Example: DeepSeek for planning, GPT-4 for code:
+
 ```bash
-pip install manim
+PLANNER_PROVIDER=deepseek
+CODE_PROVIDER=openai
+CODE_MODEL=gpt-4o
+DEEPSEEK_API_KEY=sk-...
+GPT4_API_KEY=sk-...
 ```
 
-4. Set up environment variables:
-Create a `.env` file in the root directory with your API keys:
-```
-DEEPSEEK_API_KEY=your_deepseek_api_key
-GPT4_API_KEY=your_gpt4_api_key
-CLAUDE_API_KEY=your_claude_api_key
-```
+Example: add Claude for the step stage:
 
-## Configuration
-
-The system's behavior can be customized through `config.py`. Here are the main configuration options:
-
-### LLM API Settings
-- `USE_CLAUDE`: Set to `True` to use Claude API (default: `False`)
-- `USE_GPT`: Set to `True` to use GPT-4 API (default: `True`)
-- `Free_Web`: Free API endpoint URL
-- `DeepSeek_Web`: DeepSeek API endpoint URL
-
-### Manim Settings
-- `MANIM_CLI_PATH`: Path to the Manim executable
-- `MANIM_RENDER_QUALITY`: Rendering quality options: low (l), medium (m), high (h)
-
-### Output Settings
-- `OUTPUT_DIR`: Directory for saving output files
-
-### Changing the LLM Model
-The system supports multiple LLM models (DeepSeek, GPT-4, and Claude). To change the model:
-
-1. Open `parallel_code_generation.py` and `parallel_processing.py`
-2. Update the API configuration at the top of the file:
-   ```python
-   # For GPT-4:
-   gpt_api = GPT4_API_KEY
-   # gpt_url = Free_Web 
-   
-   # For Claude:
-   gpt_api = CLAUDE_API_KEY
-   gpt_url = "https://api.anthropic.com/v1"
-   
-   # For DeepSeek (default):
-   gpt_api = DeepSeek_Prompt_API_KEY
-   gpt_url = DeepSeek_Web
-   ```
-3. In the `generate_code_for_step`(in`parallel_code_generation.py` ) and `call_llm_api`(in`parallel_processing.py`) function, update the model name:
-   ```python
-   # For GPT-4:
-   model="gpt-4o"  # or "gpt-4-turbo-preview"
-   
-   # For Claude:
-   model="claude-3-opus-20240229"
-   
-   # For DeepSeek:
-   model="deepseek-chat"
-   ```
-
-Note: Make sure you have valid API keys for your chosen model in your `.env` file.
-
-To modify these settings:
-1. Open `config.py` in your preferred text editor
-2. Update the values according to your needs
-3. Save the file
-
-## Usage
-
-### Command Line Interface
-
-1. Run the program with a mathematical concept description:
 ```bash
-python main.py "Show the geometric interpretation of the derivative of a function at x=2"
+PLANNER_PROVIDER=deepseek
+STEP_PROVIDER=anthropic
+CODE_PROVIDER=openai
+DEEPSEEK_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GPT4_API_KEY=sk-...
+# pip install langchain-anthropic
 ```
 
-2. Or run without arguments to enter the description interactively:
+## Example usage
+
+### 1. Command line
+
+From the `langchain_agent` directory (or repo root with `python langchain_agent/main.py`):
+
 ```bash
+cd langchain_agent
+
+# Topic as argument
+python main.py "Explain the material derivative in fluid flow"
+
+# Or prompt for topic
 python main.py
+# Then type e.g.: Geometric interpretation of the derivative at x=2
 ```
 
-### Web Interface(Have not developed yet)
+### 2. Programmatic (Python)
 
-1. Start the Streamlit web interface:
+Run the full pipeline from your own script; the pipeline is a LangGraph, so you can also inspect or reuse the graph.
+
+```python
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path("path/to/Animated-math-and-physics/langchain_agent").resolve()))
+
+from agent.pipeline_graph import run_pipeline, build_pipeline_graph
+
+# One-shot: run entire pipeline
+result = run_pipeline("Explain the chain rule with a simple example")
+if result["status"] == "success":
+    plan = result["stages"]["plan"]["steps"]
+    video_path = result["stages"].get("combined_scene_path")
+    print("Steps:", [s["id"] for s in plan])
+    print("Video:", video_path)
+else:
+    print("Error:", result["error"])
+
+# Or use the graph directly (e.g. for streaming or custom state)
+graph = build_pipeline_graph()
+app = graph.compile()
+final_state = app.invoke({"user_input": "Derivative of x^2", "stages": {}})
+print(final_state.get("plan"), final_state.get("stages", {}).keys())
+```
+
+### 3. Load env from `.env`
+
+If you use a `.env` file in the project root:
+
+```python
+from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+from agent.pipeline_graph import run_pipeline
+result = run_pipeline("Your math topic here")
+```
+
+## Run (CLI)
+
+From the `langchain_agent` directory:
+
 ```bash
-streamlit run app.py
+python main.py "Explain the material derivative in fluid flow"
+# or
+python main.py
+# then enter topic when prompted
 ```
 
-2. Open your browser and navigate to `http://localhost:8501`
+Outputs (per run, under a **timestamped folder**):
 
-3. Enter your mathematical or physics concept description in the text area and click "Generate Visualization"
+- `outputs/<YYYY-MM-DD_HH-MM-SS>/` – one folder per run (current date and time when the run started).
+  - `animation_outputs/` – `animation_descriptions.json`, `<step_id>.py`, `generated_code.json`.
+  - `final_animation/` – `individual_scenes/<step_id>.mp4`, `combined_animation.mp4`.
 
-## Output
+### Rendering (Stage 5)
 
-The system generates:
-- Animation descriptions for each step
-- Manim code files
-- Rendered video animations
-- Process summary with status and details
+- **Manim** and **FFmpeg** must be installed for video output.
+- Optional env: `MANIM_RENDER_QUALITY` (default `l`; use `m` or `h` for higher quality), `MANIM_CLI` (default `python -m manim`).
 
-Output files are saved in:
-- `animation_outputs/` - Intermediate files and descriptions
-- `final_animation/` - Rendered video files
+## Design
 
-## Example Usage
-
-Here's an example of how to visualize the material derivative concept:
-
-```bash
-python main.py "Show the material derivative of temperature in a fluid flow, including the convective and local derivative components"
-```
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Support
-
-If you encounter any issues or have questions, please open an issue in the GitHub repository.
-
-## System Diagrams
-
-
-### Framework Diagram 
-
-
-```mermaid
-graph TB
-    subgraph UserInteraction
-        A[Mathematical Concept] --> B[Natural Language Description]
-        C[Educational Goals] --> B
-    end
-
-    subgraph ContentPlanning
-        B --> D[Structured Animation Plan]
-        D --> |Step 1| E1[Intuitive Opening]
-        D --> |Step 2| E2[Learning Objectives]
-        D --> |Step 3| E3[Precise Definitions]
-        D --> |...| E4[...]
-        D --> |Step N| E5[Related Concepts]
-    end
-
-    subgraph ParallelProcessing
-        %% Parallel Processing Clusters
-        subgraph DescriptionGeneration[Description Generation Cluster]
-            direction LR
-            E1 & E2 & E3 & E4 & E5 --> PE1[Prompt Engineering]
-            PE1 --> LLMD[LLM API]
-            LLMD --> |Parallel Processing| AD1 & AD2 & AD3 & AD4 & AD5
-        end
-        
-        subgraph CodeGeneration[Code Generation Cluster]
-            direction LR
-            AD1[Animation Description 1]
-            AD2[Animation Description 2]
-            AD3[Animation Description 3]
-            AD4[...]
-            AD5[Animation Description N]
-            AD1 & AD2 & AD3 & AD4 & AD5 --> PE2[Prompt Engineering]
-            PE2 --> LLMC[LLM API]
-            LLMC -->|Parallel Processing| MC1 & MC2 & MC3 & MC4 & MC5
-        end
-
-        MC1[Manim Code 1]
-        MC2[Manim Code 2]
-        MC3[Manim Code 3]
-        MC4[...]
-        MC5[Manim Code N]
-    end
-
-    subgraph SceneImplementation
-        MC1 & MC2 & MC3 & MC4 & MC5 --> M[Combine All Components]
-        
-        M --> |Animation Sequences| I[Scene Elements]
-        M --> |Color Schemes| I
-        M --> |Motion Design| I
-        M --> |Narrations| I
-        M --> |.......| I
-        M --> |Mathematical Formulas| I
-        M --> |Physical Equations| I
-        M --> |Interactive Elements| I
-    end
-
-    subgraph FinalOutput
-        I --> Q[Educational Animation]
-        Q --> R[Student Understanding]
-    end
-
-%% Style Definitions
-classDef userInteraction fill:#e3f2fd,stroke:#1565c0;
-classDef contentPlanning fill:#f3e5f5,stroke:#6a1b9a;
-classDef parallelProcessing fill:#fff8e1,stroke:#ff6f00;
-classDef sceneImplementation fill:#e8f5e9,stroke:#2e7d32;
-classDef finalOutput fill:#e8eaf6,stroke:#283593;
-classDef llmAPI fill:#e1bee7,stroke:#6a1b9a;
-classDef processingCluster fill:#f5f5f5,stroke:#9e9e9e,stroke-dasharray: 5 5;
-classDef promptEngineering fill:#ffcdd2,stroke:#c62828;
-
-%% Apply styles to subgraphs
-class UserInteraction userInteraction;
-class ContentPlanning contentPlanning;
-class ParallelProcessing parallelProcessing;
-class SceneImplementation sceneImplementation;
-class FinalOutput finalOutput;
-class LLMD,LLMC llmAPI;
-class PE1,PE2 promptEngineering;
-class DescriptionGeneration,CodeGeneration processingCluster;
-``` 
+- **Planner** (`agent/planner.py`): One LLM call that returns a JSON list of `{id, goal}`. No fixed template; the model decides how many steps and what each step is.
+- **Step agent** (`agent/step_agent.py`): Runs **sequentially**. For step *i*, the prompt includes the full plan and the text of steps 1…*i*−1 so each step “remembers” the others.
+- **Code agent** (`agent/code_agent.py`): Uses the parent project’s `system_prompt_code.txt` and `user_prompt_code_template.txt` to generate Manim code from each step description.
+- **Scene auto-fix** (`agent/scene_fix_graph.py`): **LangGraph** workflow: `validate` (run Manim) → on failure → `fix` (LLM rewrites code from error + code) → `validate` again, until success or max attempts. Uses the same stage config as code gen (e.g. `CODE_PROVIDER`).
+- **Render** (`agent/render.py`): Renders each step’s `.py` in **parallel** (multiprocessing), then merges the resulting MP4s with FFmpeg in plan order into `final_animation/combined_animation.mp4`.

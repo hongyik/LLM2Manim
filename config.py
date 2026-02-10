@@ -1,88 +1,99 @@
-# config.py
+# config.py - LangChain agent version
 import os
+from pathlib import Path
+from typing import Any, Dict
 
-# =============================================
-# API Configuration
-# =============================================
+ROOT_DIR = Path(__file__).resolve().parent.parent
 
-# API Keys
-# Note: It's recommended to use environment variables for sensitive keys
-DeepSeek_Prompt_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-# GPT4_API_KEY = "sk-TmeRzxqaqBwUEfz2FHi3S73k9siM6gsBBrPDc0JXkcZb8xH9"  # "Your OpenAI API key"
-GPT4_API_KEY = "sk-974L3UWhpQQPh1Ec19KXDSkabFW7ics5Fu7y9C8im9My4nOZ"  # Replace with your actual GPT-4 API key
-CLAUDE_API_KEY = "Claude API key"  # Replace with your actual Claude API key
+# Parent project assets (code prompts for Manim)
+SYSTEM_PROMPT_CODE_FILE = ROOT_DIR / "system_prompt_code.txt"
+USER_PROMPT_CODE_TEMPLATE_FILE = ROOT_DIR / "user_prompt_code_template.txt"
 
-# API Selection
-USE_CLAUDE = False  # Set to True to use Claude API
-USE_GPT = True      # Set to True to use GPT-4 API
+# API keys and endpoints (shared)
+# Supported providers: deepseek, openai, anthropic (add more below and in agent/llm.py)
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+GPT4_API_KEY = os.getenv("GPT4_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
-# API Endpoints
-Free_Web = "https://api.chatanywhere.tech/v1"    # Free API endpoint
-DeepSeek_Web = "https://api.deepseek.com/v1"     # DeepSeek API endpoint
+DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 
-# =============================================
-# Manim Configuration
-# =============================================
+DEEPSEEK_MODEL = "deepseek-reasoner"
+OPENAI_MODEL = "gpt-4o"
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 
-# Path Configuration
-MANIM_CLI_PATH = "C:\\Users\\kehon\\AppData\\Roaming\\Python\\Python312\\Scripts\\manim.exe"
+# Default provider (fallback when a stage does not set its own)
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "deepseek")
 
-# Quality Settings
-MANIM_RENDER_QUALITY = "l"  # Options: low (l), medium (m), high (h)
+# Per-stage API/model selection (optional)
+# Example: DeepSeek for planner, GPT for code, Claude for step:
+#   PLANNER_PROVIDER=deepseek  STEP_PROVIDER=anthropic  CODE_PROVIDER=openai  CODE_MODEL=gpt-4o
+# Stages: planner, step, code
+STAGE_NAMES = ("planner", "step", "code")
 
-# =============================================
-# Output Configuration
-# =============================================
+# Default model per provider (used when STAGE_MODEL is not set)
+_DEFAULT_MODEL = {
+    "deepseek": DEEPSEEK_MODEL,
+    "openai": OPENAI_MODEL,
+    "anthropic": ANTHROPIC_MODEL,
+}
 
-# Directory Settings
-OUTPUT_DIR = "./outputs"  # Main output directory for all generated content
 
-# =============================================
-# Prompt Template Functions
-# =============================================
-
-def prompt_template(content):
+def get_stage_llm_config(stage: str) -> Dict[str, Any]:
     """
-    Generate system and user prompts for animation description.
-    
-    Args:
-        content (str): The content to be formatted into the prompt
-        
-    Returns:
-        tuple: (system_prompt, user_prompt)
+    Return API config for a given stage. Each stage can override provider and model.
+    stage: one of "planner", "step", "code"
+    Returns: dict with provider, model, api_key, base_url (base_url may be None for anthropic)
     """
-    # Read system prompt from file
-    with open('system_prompt.txt', 'r', encoding='utf-8') as f:
-        system_p = f.read()
-    
-    # Read user prompt template from file
-    with open('user_prompt_template.txt', 'r', encoding='utf-8') as f:
-        user_p_template = f.read()
-    
-    # Format user prompt with content
-    user_p = user_p_template.format(content=content)
-    
-    return system_p, user_p
+    stage_lower = stage.lower()
+    env_prefix = stage_lower.upper() + "_"
+    provider = (os.getenv(f"{env_prefix}PROVIDER") or os.getenv("LLM_PROVIDER", "deepseek")).lower()
+    model = os.getenv(f"{env_prefix}MODEL") or _DEFAULT_MODEL.get(provider, OPENAI_MODEL)
 
-def prompt_template_code(animation_prompt):
-    """
-    Generate system and user prompts for code generation.
-    
-    Args:
-        animation_prompt (str): The animation description to be formatted into the prompt
-        
-    Returns:
-        tuple: (system_prompt, user_prompt)
-    """
-    # Read system prompt from file
-    with open('system_prompt_code.txt', 'r', encoding='utf-8') as f:
-        system_prompt = f.read()
-    
-    # Read user prompt template from file
-    with open('user_prompt_code_template.txt', 'r', encoding='utf-8') as f:
-        user_prompt_template = f.read()
-    
-    # Format user prompt with animation prompt
-    user_prompt = user_prompt_template.format(animation_prompt=animation_prompt)
-    
-    return system_prompt, user_prompt
+    if provider == "deepseek":
+        return {
+            "provider": "deepseek",
+            "model": model,
+            "api_key": DEEPSEEK_API_KEY,
+            "base_url": DEEPSEEK_BASE_URL,
+        }
+    if provider == "anthropic":
+        return {
+            "provider": "anthropic",
+            "model": model,
+            "api_key": ANTHROPIC_API_KEY,
+            "base_url": None,
+        }
+    # openai or any OpenAI-compatible endpoint
+    return {
+        "provider": "openai",
+        "model": model,
+        "api_key": GPT4_API_KEY,
+        "base_url": OPENAI_BASE_URL,
+    }
+
+
+# =============================================
+# Output: one run folder per process (date-time), with animation_outputs + final_animation inside
+# =============================================
+from datetime import datetime
+
+_OUTPUT_BASE = Path(__file__).resolve().parent / "outputs"
+_RUN_DIR = _OUTPUT_BASE / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+_RUN_DIR.mkdir(parents=True, exist_ok=True)
+
+RUN_DIR = _RUN_DIR  # e.g. outputs/2025-02-09_14-30-00
+OUTPUT_DIR = _RUN_DIR / "animation_outputs"
+FINAL_VIDEO_DIR = _RUN_DIR / "final_animation"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+FINAL_VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+
+# =============================================
+# Render quality (Manim video output)
+# =============================================
+# Quality: "l" (low, 480p15), "m" (medium), "h" (high), "p" (production), "k" (4k)
+# Override with env: MANIM_RENDER_QUALITY
+MANIM_RENDER_QUALITY = os.getenv("MANIM_RENDER_QUALITY", "l")
+
+# Manim CLI (command or path to executable)
+MANIM_CLI = os.getenv("MANIM_CLI", "python -m manim")

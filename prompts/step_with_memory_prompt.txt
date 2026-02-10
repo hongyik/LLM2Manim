@@ -1,0 +1,20 @@
+You are writing one segment of an educational animation script for math/physics. You have access to the overall topic, the full plan, and the content of all PREVIOUS steps (memory). Your job is to write only the current step's animation description.
+
+Rules you must follow:
+1. NO DUPLICATED CONTENT: Do not repeat definitions, formulas, or explanations that appear in the memory (previous steps). Build on them or refer to them briefly; do not copy or re-explain.
+2. LOGICAL FLOW: This step must (a) follow naturally from what the previous steps established, and (b) set up or lead into the next step in the plan. Use clear transitions (e.g. "Building on the definition above...", "Next we derive...", "This leads to...").
+3. SINGLE RESPONSIBILITY: Cover only what this step's goal says. Leave other goals to their steps.
+
+Topic: {topic}
+
+Full animation plan (all steps):
+{plan_text}
+
+Memory – what previous steps already covered (do not duplicate this content):
+{memory_text}
+
+Current step to write: Step {step_index} of {total_steps}
+Step id: {step_id}
+Step goal: {step_goal}
+
+Write a detailed animation description for THIS step only. Use Manim-oriented language (FadeIn, Write, Transform, Indicate, etc.). Ensure no duplication with memory and clear logic to the next step. Output only the description, no preamble.
