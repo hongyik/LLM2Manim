@@ -3,11 +3,12 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parent
+PROMPTS_DIR = ROOT_DIR / "prompts"
 
-# Parent project assets (code prompts for Manim)
-SYSTEM_PROMPT_CODE_FILE = ROOT_DIR / "system_prompt_code.txt"
-USER_PROMPT_CODE_TEMPLATE_FILE = ROOT_DIR / "user_prompt_code_template.txt"
+# Code prompt assets for Manim (stored under this project's prompts/ folder)
+SYSTEM_PROMPT_CODE_FILE = PROMPTS_DIR / "system_prompt_code.txt"
+USER_PROMPT_CODE_TEMPLATE_FILE = PROMPTS_DIR / "user_prompt_code_template.txt"
 
 # API keys and endpoints (shared)
 # Supported providers: deepseek, openai, anthropic (add more below and in agent/llm.py)
