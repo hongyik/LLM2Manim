@@ -1,6 +1,7 @@
 # Python cache
 __pycache__/
 *.py[cod]
+agent/__pycache__/
 
 # Virtual environments
 Amp-venv/
@@ -11,7 +12,7 @@ venv/
 media/
 videos/
 images/
-
+outputs/
 # IDE / OS
 .vscode/
 .idea/
