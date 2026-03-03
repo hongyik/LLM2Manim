@@ -2,12 +2,15 @@ Generate Manim code for the following animation description:
 
 {animation_prompt}
 
+CONSISTENCY LEDGER — you MUST use these exact symbols, colors, and object names. Do not invent alternatives or rename anything already defined here:
+{ledger_text}
+
 Requirements:
 - Create a `GenScene` class with complete animation implementation
 - Include all necessary imports and setup
-- Use appropriate Manim objects and animations
+- Use the symbols, colors, and object names from the ledger above
 - Add smooth transitions and proper timing
 - Ensure proper voiceover integration if needed
 - Include clear comments for code readability
-- Test the code to ensure it runs without errors 
+- Test the code to ensure it runs without errors
 

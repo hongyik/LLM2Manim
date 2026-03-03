@@ -1,12 +1,14 @@
 """
 Code agent: generate Manim code for each step description.
 Runs all steps in parallel (simultaneously) since each step only needs its own description.
+The final ledger from the step agent is injected into every code generation call
+so all scenes use consistent symbols, colors, and object names.
 """
 import asyncio
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -14,10 +16,12 @@ from config import (
     OUTPUT_DIR,
     SYSTEM_PROMPT_CODE_FILE,
     USER_PROMPT_CODE_TEMPLATE_FILE,
+    CODE_PATTERNS_FILE,
 )
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from .llm import get_llm
+from .ledger import Ledger
 
 
 def _load_code_prompts() -> tuple:
@@ -25,6 +29,17 @@ def _load_code_prompts() -> tuple:
         system_prompt = f.read()
     with open(USER_PROMPT_CODE_TEMPLATE_FILE, "r", encoding="utf-8") as f:
         user_template = f.read()
+    # Append verified working patterns as few-shot reference (if the file exists)
+    if CODE_PATTERNS_FILE.exists():
+        patterns = CODE_PATTERNS_FILE.read_text(encoding="utf-8")
+        system_prompt = (
+            system_prompt.rstrip()
+            + "\n\n"
+            + "🔹 **Verified working code patterns — copy these idioms exactly:**\n"
+            + "```python\n"
+            + patterns
+            + "\n```"
+        )
     return system_prompt, user_template
 
 
@@ -57,6 +72,17 @@ def _sanitize_scene_code(code: str) -> str:
         count=1,
         flags=re.DOTALL,
     )
+    # Fix common manim API mistakes
+    # camera_frame was renamed to camera.frame in manim >= 0.17
+    code = code.replace(".camera_frame", ".camera.frame")
+    # Rotate/animation 'radians=' kwarg should be 'angle='
+    code = re.sub(r"\bradians\s*=", "angle=", code)
+    # Upgrade GenScene(VoiceoverScene) -> GenScene(ThreeDScene, VoiceoverScene)
+    code = re.sub(
+        r"\bclass\s+GenScene\s*\(\s*VoiceoverScene\s*\)",
+        "class GenScene(ThreeDScene, VoiceoverScene)",
+        code,
+    )
     return code.strip()
 
 
@@ -66,9 +92,13 @@ async def _generate_code_for_one_step(
     description: str,
     system_prompt: str,
     user_template: str,
+    ledger_text: str,
 ) -> tuple:
     """Generate Manim code for a single step (async). Returns (step_id, code)."""
-    user_prompt = user_template.format(animation_prompt=description)
+    user_prompt = user_template.format(
+        animation_prompt=description,
+        ledger_text=ledger_text,
+    )
     messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_prompt),
@@ -78,13 +108,16 @@ async def _generate_code_for_one_step(
     return step_id, _extract_python_code(raw)
 
 
-async def _generate_code_parallel_async(step_results: Dict[str, Any]) -> Dict[str, str]:
+async def _generate_code_parallel_async(
+    step_results: Dict[str, Any],
+    ledger_text: str,
+) -> Dict[str, str]:
     """Run code generation for all steps in parallel."""
     system_prompt, user_template = _load_code_prompts()
     llm = get_llm(stage="code", temperature=0, max_tokens=4096)
     tasks = [
         _generate_code_for_one_step(
-            llm, step_id, data["description"], system_prompt, user_template
+            llm, step_id, data["description"], system_prompt, user_template, ledger_text
         )
         for step_id, data in step_results.items()
     ]
@@ -98,16 +131,27 @@ async def _generate_code_parallel_async(step_results: Dict[str, Any]) -> Dict[st
     return code_results
 
 
-def generate_code_for_descriptions(step_results: Dict[str, Any]) -> Dict[str, Any]:
+def generate_code_for_descriptions(
+    step_results: Dict[str, Any],
+    ledger: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
     step_results: {step_id: {"description": "..."}}.
-    Generates code for all steps in parallel, then writes one .py per step.
+    ledger: final ledger dict from step_agent (notation, visual_style, objects, ...).
+
+    Generates code for all steps in parallel using the ledger for consistency,
+    then writes one .py per step.
     Returns {"status": "success", "code_results": {...}}.
     """
+    ledger_obj = Ledger.from_dict(ledger) if ledger else Ledger()
+    ledger_text = ledger_obj.to_text()
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        code_results = loop.run_until_complete(_generate_code_parallel_async(step_results))
+        code_results = loop.run_until_complete(
+            _generate_code_parallel_async(step_results, ledger_text)
+        )
     finally:
         loop.close()
 

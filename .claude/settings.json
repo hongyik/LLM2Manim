@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"Amp-venv/Scripts/python.exe\" main.py \"material derivative\")",
+      "Bash(python -m manim:*)",
+      "Bash(\"Amp-venv/Scripts/python.exe\":*)",
+      "Read(//c/Users/kehon/**)",
+      "Bash(\"c:/Users/kehon/OneDrive/Desktop/Animated-math-and-physics/Amp-venv/Scripts/python.exe\" -c \":*)",
+      "Bash(PYTHONUTF8=1 \"Amp-venv/Scripts/python.exe\" -m manim:*)",
+      "Bash(\"Amp-venv/Scripts/python.exe\" -m agent.api_check)",
+      "Bash(\"Amp-venv/Scripts/python.exe\" -c:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\kehon\\OneDrive\\Desktop\\Animated-math-and-physics\\langchain_agent",
+      "c:\\Users\\kehon\\.claude\\projects\\c--Users-kehon-OneDrive-Desktop-Animated-math-and-physics\\memory"
+    ]
+  }
+}

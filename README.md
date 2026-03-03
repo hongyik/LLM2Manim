@@ -156,6 +156,39 @@ Outputs (per run, under a **timestamped folder**):
 - **Manim** and **FFmpeg** must be installed for video output.
 - Optional env: `MANIM_RENDER_QUALITY` (default `l`; use `m` or `h` for higher quality), `MANIM_CLI` (default `python -m manim`).
 
+## Testing for failure
+
+The pipeline returns a single result dict. **Treat it as failed if `result["status"] == "error"`.**
+
+- **From CLI**: If the run failed, the script prints `❌ Error: <message>` and you can check the process exit code (e.g. in scripts: `python main.py "topic" ; echo $?` on Unix; on Windows check `%ERRORLEVEL%` or use the return value from `main()`).
+- **From Python**: Always check the return value of `run_pipeline()` or `process_visualization()`:
+
+```python
+from agent.pipeline_graph import run_pipeline
+
+result = run_pipeline("Your topic here")
+
+if result["status"] == "error":
+    print("Failed:", result["error"])
+    # Optional: inspect which stage failed via result["stages"]
+else:
+    print("Success. Video:", result["stages"].get("combined_scene_path"))
+```
+
+**When is `status` set to `"error"`?**
+
+- Parse: empty input.
+- Any stage raises an exception (LLM, file I/O, etc.).
+- Scene auto-fix: one or more scenes still fail after max attempts (`still_failed`).
+- Render: Manim/FFmpeg did not produce a combined video (`render` stage `status` is `"partial"` or `"error"`).
+
+To force a quick failure (e.g. in CI), run with empty input:
+
+```bash
+python main.py ""
+# or from Python: run_pipeline("")  → result["status"] == "error", result["error"] explains why
+```
+
 ## Design
 
 - **Planner** (`agent/planner.py`): One LLM call that returns a JSON list of `{id, goal}`. No fixed template; the model decides how many steps and what each step is.

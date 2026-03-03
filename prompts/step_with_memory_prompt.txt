@@ -1,20 +1,45 @@
-You are writing one segment of an educational animation script for math/physics. You have access to the overall topic, the full plan, and the content of all PREVIOUS steps (memory). Your job is to write only the current step's animation description.
+You are writing one segment of an educational animation script for math/physics. You have access to the overall topic, the full plan, the content of all PREVIOUS steps (memory), and the current CONSISTENCY LEDGER.
 
-Rules you must follow:
-1. NO DUPLICATED CONTENT: Do not repeat definitions, formulas, or explanations that appear in the memory (previous steps). Build on them or refer to them briefly; do not copy or re-explain.
-2. LOGICAL FLOW: This step must (a) follow naturally from what the previous steps established, and (b) set up or lead into the next step in the plan. Use clear transitions (e.g. "Building on the definition above...", "Next we derive...", "This leads to...").
-3. SINGLE RESPONSIBILITY: Cover only what this step's goal says. Leave other goals to their steps.
+Your job is to write only the current step's animation description AND update the ledger.
+
+=== RULES ===
+1. NO DUPLICATED CONTENT: Do not repeat definitions, formulas, or explanations from the memory. Build on them or reference them briefly.
+2. LOGICAL FLOW: Follow naturally from previous steps and lead clearly into the next step.
+3. SINGLE RESPONSIBILITY: Cover only what this step's goal says.
+4. LEDGER CONSISTENCY: Use ONLY the symbols, colors, and object names already in the ledger. You may ADD new entries but NEVER contradict or rename existing ones.
+5. QUALITY BAR: Descriptions should be rich enough to produce animations on par with a polished educational video — specify exact Manim objects, transitions, colors, voiceover text snippets, and timing cues.
+
+=== INPUT ===
 
 Topic: {topic}
 
 Full animation plan (all steps):
 {plan_text}
 
-Memory – what previous steps already covered (do not duplicate this content):
+Memory — what previous steps already covered (do not duplicate):
 {memory_text}
 
-Current step to write: Step {step_index} of {total_steps}
+Consistency Ledger (use these; do not contradict):
+{ledger_text}
+
+Current step: Step {step_index} of {total_steps}
 Step id: {step_id}
 Step goal: {step_goal}
 
-Write a detailed animation description for THIS step only. Use Manim-oriented language (FadeIn, Write, Transform, Indicate, etc.). Ensure no duplication with memory and clear logic to the next step. Output only the description, no preamble.
+=== OUTPUT FORMAT (mandatory) ===
+Output EXACTLY the two sections below, with the markers on their own lines. No other text.
+
+===DESCRIPTION===
+[Detailed animation description for this step in Manim-oriented language.
+Include: scene layout, Manim objects used (Text, MathTex, VGroup, Arrow, etc.),
+animation calls (Write, FadeIn, Transform, Indicate, etc.), voiceover lines,
+color choices, and clear transitions to the next step.]
+
+===LEDGER_UPDATES===
+{{
+  "notation": {{"symbol": "definition — only NEW symbols introduced in this step"}},
+  "visual_style": {{"key": "value — only NEW style decisions"}},
+  "objects": {{"name": "description — only NEW recurring scene objects"}},
+  "story_so_far": ["One-line key conclusion from this step"],
+  "constraints": ["Any new invariant that ALL future steps must respect"]
+}}

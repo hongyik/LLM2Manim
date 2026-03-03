@@ -1,7 +1,8 @@
 # config.py - LangChain agent version
 import os
+import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 ROOT_DIR = Path(__file__).resolve().parent
 PROMPTS_DIR = ROOT_DIR / "prompts"
@@ -9,6 +10,7 @@ PROMPTS_DIR = ROOT_DIR / "prompts"
 # Code prompt assets for Manim (stored under this project's prompts/ folder)
 SYSTEM_PROMPT_CODE_FILE = PROMPTS_DIR / "system_prompt_code.txt"
 USER_PROMPT_CODE_TEMPLATE_FILE = PROMPTS_DIR / "user_prompt_code_template.txt"
+CODE_PATTERNS_FILE = PROMPTS_DIR / "code_patterns.txt"   # verified working snippets
 
 # API keys and endpoints (shared)
 # Supported providers: deepseek, openai, anthropic (add more below and in agent/llm.py)
@@ -76,18 +78,30 @@ def get_stage_llm_config(stage: str) -> Dict[str, Any]:
 
 # =============================================
 # Output: one run folder per process (date-time), with animation_outputs + final_animation inside
+# Created once via init_run_dir() so a single run does not create multiple folders (e.g. from
+# workers or re-imports). Must be called before any code uses RUN_DIR/OUTPUT_DIR/FINAL_VIDEO_DIR.
 # =============================================
 from datetime import datetime
 
 _OUTPUT_BASE = Path(__file__).resolve().parent / "outputs"
-_RUN_DIR = _OUTPUT_BASE / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-_RUN_DIR.mkdir(parents=True, exist_ok=True)
+_RUN_DIR: Optional[Path] = None
+RUN_DIR: Path = None  # type: ignore[assignment]
+OUTPUT_DIR: Path = None  # type: ignore[assignment]
+FINAL_VIDEO_DIR: Path = None  # type: ignore[assignment]
 
-RUN_DIR = _RUN_DIR  # e.g. outputs/2025-02-09_14-30-00
-OUTPUT_DIR = _RUN_DIR / "animation_outputs"
-FINAL_VIDEO_DIR = _RUN_DIR / "final_animation"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-FINAL_VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+
+def init_run_dir() -> None:
+    """Create the single run directory for this process. Idempotent: safe to call multiple times."""
+    global _RUN_DIR, RUN_DIR, OUTPUT_DIR, FINAL_VIDEO_DIR
+    if _RUN_DIR is not None:
+        return
+    _RUN_DIR = _OUTPUT_BASE / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    _RUN_DIR.mkdir(parents=True, exist_ok=True)
+    RUN_DIR = _RUN_DIR
+    OUTPUT_DIR = _RUN_DIR / "animation_outputs"
+    FINAL_VIDEO_DIR = _RUN_DIR / "final_animation"
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    FINAL_VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 
 # =============================================
 # Render quality (Manim video output)
@@ -97,4 +111,5 @@ FINAL_VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 MANIM_RENDER_QUALITY = os.getenv("MANIM_RENDER_QUALITY", "l")
 
 # Manim CLI (command or path to executable)
-MANIM_CLI = os.getenv("MANIM_CLI", "python -m manim")
+# Use sys.executable so subprocesses always use the same venv Python, not the system Python.
+MANIM_CLI = os.getenv("MANIM_CLI", f"{sys.executable} -m manim")

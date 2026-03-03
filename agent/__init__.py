@@ -4,6 +4,8 @@ from .code_agent import generate_code_for_descriptions
 from .render import render_and_combine
 from .scene_fix_graph import run_auto_fix_for_all_scenes
 from .pipeline_graph import build_pipeline_graph, run_pipeline, PipelineState
+from .ledger import Ledger
+from .memory_block import MemoryBlock
 
 __all__ = [
     "plan_animation_steps",
@@ -14,4 +16,6 @@ __all__ = [
     "build_pipeline_graph",
     "run_pipeline",
     "PipelineState",
+    "Ledger",
+    "MemoryBlock",
 ]

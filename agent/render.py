@@ -9,14 +9,18 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from config import ROOT_DIR
+
 # Config is loaded inside functions to avoid import-time path issues
 MANIM_QUALITY_DIRS = ["480p15", "720p30", "1080p60", "2160p60"]
 
 
-def _render_one(args: Tuple[str, Path, Path, Path, str, str]) -> Tuple[str, Optional[str]]:
+def _render_one(args: Tuple[str, Path, Path, Path, str, str]) -> Tuple[str, Optional[str], str]:
     """
     Render a single scene. Designed to be run in a worker process.
-    Returns (step_id, output_video_path or None on failure).
+    Returns (step_id, output_video_path or None on failure, error_msg).
     """
     step_id, input_dir, individual_dir, cwd, quality, manim_cli = args
     input_dir = Path(input_dir).resolve()
@@ -25,29 +29,48 @@ def _render_one(args: Tuple[str, Path, Path, Path, str, str]) -> Tuple[str, Opti
     file_name = f"{step_id.lower()}.py"
     scene_file = input_dir / file_name
     if not scene_file.exists():
-        return step_id, None
+        return step_id, None, "scene file not found"
     output_name = step_id.lower()
-    # Run from cwd so manim's media/videos is under cwd; use absolute path for scene file
+    # Run from project root so kokoro model files are found and media/ is written there
     cmd = f"{manim_cli} -q {quality} {scene_file} GenScene -o {output_name}"
+    env = {**os.environ, "PYTHONUTF8": "1"}
     try:
-        subprocess.run(
+        result = subprocess.run(
             cmd,
             shell=True,
             cwd=str(cwd),
-            check=True,
+            env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=300,
         )
-    except subprocess.CalledProcessError:
-        return step_id, None
-    # Manim writes to media/videos/<relative_dir>/<quality>/<name>.mp4
-    # scene_file relative to cwd: e.g. animation_outputs/intro.py -> animation_outputs
-    try:
-        rel = scene_file.relative_to(cwd)
-        parts = rel.parts[:-1]  # directory part
-        video_dir = Path(cwd) / "media" / "videos" / Path(*parts) / output_name
-    except ValueError:
-        video_dir = Path(cwd) / "media" / "videos" / output_name
+        if result.returncode != 0:
+            raw_err = (result.stderr or result.stdout or "").strip()
+            # Strip UserWarning/DeprecationWarning lines (and their indented continuation)
+            import re as _re
+            _warn_pat = _re.compile(
+                r"^\s*.*?: (UserWarning|DeprecationWarning|FutureWarning)", _re.MULTILINE
+            )
+            filtered, skip_next = [], False
+            for ln in raw_err.splitlines():
+                if _warn_pat.match(ln):
+                    skip_next = True
+                    continue
+                if skip_next and ln.startswith("  "):
+                    continue  # keep skipping all indented continuation lines
+                skip_next = False
+                filtered.append(ln)
+            err = "\n".join(filtered).strip() or raw_err
+            first = err.splitlines()[0][:120] if err else "non-zero exit"
+            return step_id, None, first
+    except subprocess.TimeoutExpired:
+        return step_id, None, "render timed out (300s)"
+    except subprocess.CalledProcessError as e:
+        return step_id, None, str(e)
+    # Manim writes to media/videos/<stem>/<quality>/<name>.mp4 relative to cwd
+    video_dir = Path(cwd) / "media" / "videos" / output_name
     video_path = None
     for qdir in MANIM_QUALITY_DIRS:
         candidate = video_dir / qdir / f"{output_name}.mp4"
@@ -55,10 +78,10 @@ def _render_one(args: Tuple[str, Path, Path, Path, str, str]) -> Tuple[str, Opti
             video_path = candidate
             break
     if not video_path or not video_path.exists():
-        return step_id, None
+        return step_id, None, "rendered but output .mp4 not found"
     dest = individual_dir / f"{output_name}.mp4"
     shutil.copy(str(video_path), str(dest))
-    return step_id, str(dest)
+    return step_id, str(dest), ""
 
 
 def render_all_parallel(
@@ -78,20 +101,25 @@ def render_all_parallel(
     output_dir = Path(output_dir).resolve()
     individual_dir = output_dir / "individual_scenes"
     individual_dir.mkdir(parents=True, exist_ok=True)
-    cwd = input_dir.parent
+    cwd = ROOT_DIR  # project root: kokoro model files live here, media/ written here
     args_list = [
         (sid, input_dir, individual_dir, cwd, quality, manim_cli)
         for sid in step_ids
     ]
     rendered = {}
     if max_workers is None:
-        max_workers = max(1, (os.cpu_count() or 2) - 1)
+        # Kokoro TTS is memory-intensive; cap at 2 to avoid OOM when running in parallel.
+        max_workers = 2
+    print(f"   Rendering {len(step_ids)} scene(s) in parallel (max {max_workers} workers)...")
     with ProcessPoolExecutor(max_workers=max_workers) as pool:
         futures = {pool.submit(_render_one, a): a[0] for a in args_list}
         for future in as_completed(futures):
-            step_id, path = future.result()
+            step_id, path, err = future.result()
             if path:
                 rendered[step_id] = path
+                print(f"   [OK]   {step_id} -> {Path(path).name}")
+            else:
+                print(f"   [FAIL] {step_id}: {err}")
     return rendered
 
 
@@ -103,12 +131,14 @@ def merge_videos_with_ffmpeg(
     """
     Concatenate videos in step_order using FFmpeg. Returns path to combined MP4 or None.
     """
-    valid_paths = [rendered_videos[sid] for sid in step_order if sid in rendered_videos]
+    valid = [sid for sid in step_order if sid in rendered_videos]
+    valid_paths = [rendered_videos[sid] for sid in valid]
     if not valid_paths:
+        print("   No rendered videos to merge.")
         return None
+    print(f"   Merging {len(valid_paths)}/{len(step_order)} scene(s) with FFmpeg...")
     list_file = output_dir / "video_list.txt"
     final_output = output_dir / "combined_animation.mp4"
-    individual_dir = output_dir / "individual_scenes"
     with open(list_file, "w", encoding="utf-8") as f:
         for p in valid_paths:
             name = Path(p).name
@@ -130,9 +160,13 @@ def merge_videos_with_ffmpeg(
             capture_output=True,
             cwd=str(output_dir),
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        print(f"   FFmpeg merge failed: {e}")
         return None
-    return str(final_output) if final_output.exists() else None
+    if final_output.exists():
+        print(f"   Combined video: {final_output}")
+        return str(final_output)
+    return None
 
 
 def render_and_combine(
@@ -150,6 +184,9 @@ def render_and_combine(
     rendered = render_all_parallel(
         step_ids, input_dir, output_dir, quality=quality, manim_cli=manim_cli
     )
+    failed = [sid for sid in step_ids if sid not in rendered]
+    if failed:
+        print(f"   Scenes that failed to render: {failed}")
     combined = merge_videos_with_ffmpeg(step_ids, rendered, output_dir)
     status = "success" if combined and len(rendered) == len(step_ids) else (
         "partial" if rendered else "error"

@@ -1,0 +1,326 @@
+# WORKING CODE PATTERNS — extracted from verified Manim scenes
+# Study these idioms carefully. Copy their structure; adapt the math/content.
+# Every snippet below is real code that rendered successfully.
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 1: Canonical scene skeleton  (copy this EXACTLY)
+# RULES:
+#   - Always inherit from BOTH ThreeDScene and VoiceoverScene
+#   - Create objects OUTSIDE voiceover blocks; animate them INSIDE
+#   - Add self.wait(0.5) between beats for pacing
+#   - Transitions (to_edge, shift) that don't need TTS go OUTSIDE voiceover
+#   - End every section with FadeOut before the next section
+# ═══════════════════════════════════════════════════════════════════
+from manim import *
+from manim_voiceover import VoiceoverScene
+from kokoro_mv import KokoroService
+import numpy as np
+
+class GenScene(ThreeDScene, VoiceoverScene):
+    def construct(self):
+        self.set_speech_service(KokoroService(voice="af_sarah", lang="en-us"))
+
+        # --- Beat 1: Create object BEFORE voiceover, animate INSIDE ---
+        title = Text("Scene Title", font_size=48)
+        with self.voiceover(text="Welcome to this lesson.") as tracker:
+            self.play(Write(title))
+        self.wait(0.5)
+        # Transition outside voiceover (no TTS needed for positioning)
+        self.play(title.animate.to_edge(UP))
+
+        # --- Beat 2: Another object, another voiceover beat ---
+        body = Tex(r"Some explanation text.", font_size=36)
+        with self.voiceover(text="Here is an explanation.") as tracker:
+            self.play(FadeIn(body))
+        self.wait(0.5)
+
+        # --- Cleanup before next section ---
+        self.play(FadeOut(title), FadeOut(body))
+        self.wait(1)
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 2: Voiceover wrapping self.play  (ALWAYS use this form)
+# Note: object defined BEFORE the with-block, animated INSIDE it.
+# ═══════════════════════════════════════════════════════════════════
+title = Text("Reynolds Transport Theorem", font_size=48)
+with self.voiceover(text="Welcome to today's lesson on Reynolds Transport Theorem.") as tracker:
+    self.play(FadeIn(title))
+self.wait(0.5)
+# Move to edge after intro (no voiceover needed — happens OUTSIDE)
+self.play(title.animate.to_edge(UP))
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 3: Multi-argument MathTex with index-based coloring
+# Use multiple string args to MathTex so you can color each part by index.
+# ═══════════════════════════════════════════════════════════════════
+equation = MathTex(
+    r"\frac{DQ}{Dt}",          # [0] — total derivative (yellow)
+    r"=",                       # [1]
+    r"\frac{\partial Q}{\partial t}",  # [2] — temporal term (red)
+    r"+",                       # [3]
+    r"\mathbf{v} \cdot \nabla Q",      # [4] — convective term (blue)
+    font_size=48
+).center()
+# Color individual parts AFTER creation:
+equation[0].set_color(YELLOW)
+equation[2].set_color(RED)
+equation[4].set_color(BLUE)
+with self.voiceover(text="The material derivative consists of two terms."):
+    self.play(Write(equation))
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 4: Arrows connecting equation terms to labels
+# ═══════════════════════════════════════════════════════════════════
+total_label  = Text("Total Change",    font_size=24, color=YELLOW).next_to(equation[0], DOWN, buff=0.75)
+partial_label = Text("Local Change",   font_size=24, color=RED).next_to(equation[2], UP, buff=0.75)
+conv_label   = Text("Convective",      font_size=24, color=BLUE).next_to(equation[4], DOWN, buff=0.75)
+
+arrow1 = Arrow(start=equation[0].get_bottom(), end=total_label.get_top(),  color=YELLOW, buff=0)
+arrow2 = Arrow(start=equation[2].get_top(),    end=partial_label.get_bottom(), color=RED, buff=0)
+arrow3 = Arrow(start=equation[4].get_bottom(), end=conv_label.get_top(),   color=BLUE,   buff=0)
+
+with self.voiceover(text="Let's label each term."):
+    self.play(Create(arrow1), Write(total_label))
+    self.play(Create(arrow2), Write(partial_label))
+    self.play(Create(arrow3), Write(conv_label))
+
+self.play(*[FadeOut(m) for m in [arrow1, arrow2, arrow3, total_label, partial_label, conv_label]])
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 5: Transform between two equations  (smooth equation evolution)
+# ═══════════════════════════════════════════════════════════════════
+eq_v1 = MathTex(r"\frac{DB_{sys}}{Dt} = \frac{\partial}{\partial t}\int_{CV}\beta\rho\,dV + \int_{CS}\beta\rho\mathbf{V}\cdot d\mathbf{A}", font_size=36)
+self.play(Write(eq_v1))
+
+eq_v2 = MathTex(r"\frac{DB_{sys}}{Dt} = \frac{\partial B_{CV}}{\partial t} + \int_{CS}\beta\rho\mathbf{V}\cdot d\mathbf{A}", font_size=36)
+with self.voiceover(text="Simplifying gives us this cleaner form."):
+    self.play(Transform(eq_v1, eq_v2))   # eq_v1 now shows eq_v2 visually
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 6: ValueTracker + add_updater + clear_updaters
+# Use for continuously updating labels/displays as a value changes.
+# IMPORTANT: always call clear_updaters() before FadeOut.
+# ═══════════════════════════════════════════════════════════════════
+pipe = Rectangle(height=2, width=6, color=WHITE)
+temp_label = MathTex("200K", color=BLUE).next_to(pipe, LEFT)
+self.play(Create(pipe), Write(temp_label))
+
+temp_tracker = ValueTracker(200)
+temp_label.add_updater(
+    lambda m: m.become(
+        MathTex(
+            f"{int(temp_tracker.get_value())}K",
+            color=interpolate_color(BLUE, YELLOW, (temp_tracker.get_value() - 200) / 50)
+        ).next_to(pipe, LEFT)
+    )
+)
+with self.voiceover(text="The temperature rises from 200 to 250 Kelvin."):
+    self.play(temp_tracker.animate.set_value(250), run_time=3)
+
+temp_label.clear_updaters()   # ← MUST clear before FadeOut or end of construct
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 7: Particle following a parent object (updater on label)
+# ═══════════════════════════════════════════════════════════════════
+particle = Dot(color=YELLOW).move_to(LEFT * 2)
+p_label = MathTex("P", color=YELLOW).next_to(particle, UP)
+p_label.add_updater(lambda m: m.next_to(particle, UP))  # label follows particle
+
+self.play(Create(particle), Write(p_label))
+with self.voiceover(text="The particle moves to the right."):
+    self.play(particle.animate.move_to(RIGHT * 2), run_time=3)
+p_label.clear_updaters()   # ← always clear before ending
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 8: ParametricFunction path + MoveAlongPath
+# For smooth curved particle trajectories.
+# ═══════════════════════════════════════════════════════════════════
+axes = Axes(x_range=[-3, 3, 1], y_range=[-3, 3, 1], axis_config={"color": WHITE})
+self.play(Create(axes))
+
+def particle_path(t):
+    return axes.c2p(2 * np.cos(t), 2 * np.sin(t), 0)   # circle in data coords
+
+particle = Dot(color=YELLOW).move_to(axes.c2p(2, 0, 0))
+self.play(Create(particle))
+
+with self.voiceover(text="The particle follows a circular trajectory."):
+    self.play(
+        MoveAlongPath(
+            particle,
+            ParametricFunction(particle_path, t_range=[0, 2 * PI], color=YELLOW_A)
+        ),
+        run_time=4,
+        rate_func=linear
+    )
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 9: Multiple particles animated together
+# Use list comprehension to create and animate groups efficiently.
+# ═══════════════════════════════════════════════════════════════════
+particles = VGroup(*[Dot(color=BLUE_C) for _ in range(5)])
+# Position along a pipe
+pipe = Rectangle(height=1.5, width=4, color=WHITE)
+self.play(Create(pipe))
+for i, dot in enumerate(particles):
+    dot.move_to(pipe.get_left() + LEFT * 0.5 + UP * (i * 0.2 - 0.4))
+
+self.play(FadeIn(particles))
+with self.voiceover(text="Particles stream through the control volume."):
+    self.play(
+        *[dot.animate.shift(RIGHT * 5) for dot in particles],
+        run_time=3,
+        rate_func=linear
+    )
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 10: FadeOut many objects at once  (clean cleanup)
+# ═══════════════════════════════════════════════════════════════════
+container = VGroup(equation, title, pipe, particles)
+self.play(*[FadeOut(mob) for mob in [equation, title, pipe, particles]])
+# OR group them first:
+self.play(FadeOut(container))
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 11: Multi-line Tex with aligned arrangement
+# ═══════════════════════════════════════════════════════════════════
+explanation = Tex(
+    r"The material derivative of some quantity $Q$\\",
+    r"(like temperature or velocity)\\",
+    r"is the rate of change of $Q$\\",
+    r"for a particle moving within a material",
+    font_size=36
+).arrange(DOWN, aligned_edge=LEFT)
+with self.voiceover(text="Let's define the material derivative."):
+    self.play(Write(explanation))
+self.play(explanation.animate.to_edge(UP))
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 12: Step-by-step equation build-up  (write one line at a time)
+# ═══════════════════════════════════════════════════════════════════
+step1 = MathTex(r"T_p = T_p[x_p(t), y_p(t), z_p(t), t]", font_size=32).to_edge(UP)
+step2 = MathTex(r"\frac{dT_p}{dt} = \frac{\partial T_p}{\partial t} + v_x\frac{\partial T_p}{\partial x} + v_y\frac{\partial T_p}{\partial y} + v_z\frac{\partial T_p}{\partial z}", font_size=28).next_to(step1, DOWN, buff=0.5)
+step3 = MathTex(r"\frac{DT_p}{Dt} = \frac{\partial T_p}{\partial t} + \mathbf{v} \cdot \nabla T_p", font_size=36).next_to(step2, DOWN, buff=0.5)
+
+with self.voiceover(text="Starting from the position definition..."):
+    self.play(Write(step1))
+with self.voiceover(text="Applying the chain rule..."):
+    self.play(Write(step2))
+with self.voiceover(text="In compact vector notation, this is the material derivative."):
+    self.play(Write(step3))
+    step3.set_color(YELLOW)
+
+self.play(*[FadeOut(m) for m in [step1, step2, step3]])
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 13: set_color_by_tex_to_color_map  (color specific substrings)
+# ═══════════════════════════════════════════════════════════════════
+full_eq = MathTex(
+    r"\frac{DT_p}{Dt} = \frac{\partial T_p}{\partial t} + \mathbf{v} \cdot \nabla T_p",
+    font_size=36
+)
+self.play(Write(full_eq))
+self.play(
+    full_eq.animate.set_color_by_tex_to_color_map({
+        r"\frac{DT_p}{Dt}": YELLOW,
+        r"\frac{\partial T_p}{\partial t}": RED,
+        r"\mathbf{v} \cdot \nabla T_p": BLUE,
+    })
+)
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 14: Axes + ValueTracker for animated graphs
+# ═══════════════════════════════════════════════════════════════════
+axes = Axes(
+    x_range=[0, 2 * PI, PI / 2],
+    y_range=[-1.5, 1.5, 0.5],
+    axis_config={"color": WHITE},
+    x_length=8,
+    y_length=4,
+)
+x_label = axes.get_x_axis_label("t")
+y_label = axes.get_y_axis_label("x(t)")
+self.play(Create(axes), Write(x_label), Write(y_label))
+
+t_tracker = ValueTracker(0)
+graph = always_redraw(
+    lambda: axes.plot(lambda t: np.cos(t), x_range=[0, t_tracker.get_value()], color=BLUE)
+)
+dot = always_redraw(
+    lambda: Dot(axes.c2p(t_tracker.get_value(), np.cos(t_tracker.get_value())), color=YELLOW)
+)
+self.add(graph, dot)
+with self.voiceover(text="The cosine function traces out a wave."):
+    self.play(t_tracker.animate.set_value(2 * PI), run_time=4, rate_func=linear)
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 15: Surrounding box to highlight a final equation
+# ═══════════════════════════════════════════════════════════════════
+final_eq = MathTex(r"\frac{DQ}{Dt} = \frac{\partial Q}{\partial t} + \mathbf{v}\cdot\nabla Q", font_size=48)
+self.play(Write(final_eq))
+box = SurroundingRectangle(final_eq, color=YELLOW, buff=0.3)
+with self.voiceover(text="This is the material derivative — our key result."):
+    self.play(Create(box))
+self.wait(2)
+self.play(FadeOut(final_eq), FadeOut(box))
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 16: Control volume + flow arrows (classic fluid mechanics diagram)
+# ═══════════════════════════════════════════════════════════════════
+pipe = Rectangle(height=1.5, width=4, color=WHITE)
+cv_label = Text("Control Volume", font_size=24).next_to(pipe, UP)
+arrow_in  = Arrow(start=LEFT*3,  end=LEFT*2,  color=BLUE, buff=0).next_to(pipe, LEFT)
+arrow_out = Arrow(start=RIGHT*2, end=RIGHT*3, color=RED,  buff=0).next_to(pipe, RIGHT)
+v_in   = MathTex(r"V_{in}",    font_size=32).next_to(arrow_in,  UP)
+v_out  = MathTex(r"V_{out}",   font_size=32).next_to(arrow_out, UP)
+rho_in = MathTex(r"\rho_{in}", font_size=32).next_to(arrow_in,  DOWN)
+rho_out= MathTex(r"\rho_{out}",font_size=32).next_to(arrow_out, DOWN)
+
+pipe_group = VGroup(pipe, cv_label, arrow_in, arrow_out)
+labels     = VGroup(v_in, v_out, rho_in, rho_out)
+with self.voiceover(text="Consider fluid flowing through a control volume."):
+    self.play(Create(pipe_group))
+    self.play(Write(labels))
+
+self.play(FadeOut(pipe_group), FadeOut(labels))
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 17: Temperature gradient rectangle with set_fill color list
+# ═══════════════════════════════════════════════════════════════════
+gradient = Rectangle(height=2, width=6)
+gradient.set_fill(color=[BLUE_C, RED_C], opacity=[0.3, 0.7])
+gradient.move_to(ORIGIN)
+with self.voiceover(text="The temperature gradient runs from cold to hot."):
+    self.play(FadeIn(gradient))
+# Update gradient color later:
+self.play(gradient.animate.set_fill(color=[YELLOW, RED_C], opacity=[0.3, 0.7]))
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 18: VGroup.arrange for label rows/columns
+# ═══════════════════════════════════════════════════════════════════
+labels = VGroup(
+    Text("• Changes due to motion",        font_size=24),
+    Text("• Changes due to time-varying fields", font_size=24),
+).arrange(DOWN, aligned_edge=LEFT).next_to(some_mob, DOWN, buff=0.5)
+self.play(Write(labels))
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 19: Animate scaling + repositioning a group
+# ═══════════════════════════════════════════════════════════════════
+coord_group = VGroup(axes, cube, particle_3d, p_label_3d)
+with self.voiceover(text="Let's move the coordinate system aside for clarity."):
+    self.play(coord_group.animate.scale(0.6).to_edge(LEFT))
+
+# ═══════════════════════════════════════════════════════════════════
+# PATTERN 20: Safe cleanup — clear updaters, then FadeOut everything
+# ═══════════════════════════════════════════════════════════════════
+# Always call clear_updaters() on any mob that had .add_updater() before FadeOut
+temp_label.clear_updaters()
+p_label.clear_updaters()
+self.play(
+    *[FadeOut(mob) for mob in [
+        pipe, gradient, temp_label, particle,
+        p_label, equation, title
+    ]]
+)
+self.wait(1)
