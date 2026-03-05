@@ -13,8 +13,6 @@ from langgraph.graph import END, StateGraph
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import config
-config.init_run_dir()
 from config import OUTPUT_DIR, FINAL_VIDEO_DIR, MANIM_RENDER_QUALITY, MANIM_CLI
 
 from .planner import plan_animation_steps
@@ -22,6 +20,7 @@ from .step_agent import generate_step_descriptions_with_memory
 from .code_agent import generate_code_for_descriptions
 from .scene_fix_graph import run_auto_fix_for_all_scenes
 from .render import render_and_combine
+from .layout_engine import build_layout_specs
 
 
 class PipelineState(TypedDict, total=False):
@@ -31,6 +30,7 @@ class PipelineState(TypedDict, total=False):
     plan: List[Dict[str, str]]
     descriptions: Dict[str, Any]
     ledger: Dict[str, Any]          # short-term working memory ledger
+    layout_specs: Dict[str, str]    # {step_id: layout_spec_prompt_text}
     code_result: Dict[str, Any]
     fix_result: Dict[str, Any]
     render_result: Dict[str, Any]
@@ -90,24 +90,40 @@ def _step_descriptions_node(state: PipelineState) -> Dict[str, Any]:
     }
 
 
-def _code_gen_node(state: PipelineState) -> Dict[str, Any]:
-    """Node 4: Generate Manim code for each step, injecting the ledger for consistency."""
+def _layout_node(state: PipelineState) -> Dict[str, Any]:
+    """Node 4: Compute deterministic layout specs for each scene (no LLM)."""
     if state.get("error"):
         return {}
-    print("\n Stage 4/6: Generating Manim code (ledger-consistent)...")
+    print("\n Stage 4/7: Computing layout specs (placement + animation order)...")
+    desc = state.get("descriptions") or {}
+    step_results = desc.get("step_results") or {}
+    layout_specs = build_layout_specs(step_results)
+    print(f"   Layout specs computed for {len(layout_specs)} scene(s).")
+    stages = {**(state.get("stages") or {}), "layout": {"scenes": list(layout_specs.keys())}}
+    return {"layout_specs": layout_specs, "stages": stages}
+
+
+def _code_gen_node(state: PipelineState) -> Dict[str, Any]:
+    """Node 5: Generate Manim code for each step, injecting the ledger + layout specs."""
+    if state.get("error"):
+        return {}
+    print("\n Stage 5/7: Generating Manim code (ledger-consistent, layout-grounded)...")
     desc = state.get("descriptions") or {}
     step_results = desc.get("step_results") or {}
     ledger = state.get("ledger")
-    code_result = generate_code_for_descriptions(step_results, ledger=ledger)
+    layout_specs = state.get("layout_specs") or {}
+    code_result = generate_code_for_descriptions(
+        step_results, ledger=ledger, layout_specs=layout_specs
+    )
     stages = {**(state.get("stages") or {}), "code_generation": code_result}
     return {"code_result": code_result, "stages": stages}
 
 
 def _scene_fix_node(state: PipelineState) -> Dict[str, Any]:
-    """Node 5: LangGraph auto-fix failed Manim scenes."""
+    """Node 6: LangGraph auto-fix failed Manim scenes."""
     if state.get("error"):
         return {}
-    print("\n Stage 5/6: Auto-fixing scenes (validate -> fix -> validate)...")
+    print("\n Stage 6/7: Auto-fixing scenes (validate -> fix -> validate)...")
     plan = state.get("plan") or []
     step_ids = [s["id"] for s in plan]
     fix_result = run_auto_fix_for_all_scenes(
@@ -122,10 +138,10 @@ def _scene_fix_node(state: PipelineState) -> Dict[str, Any]:
 
 
 def _render_node(state: PipelineState) -> Dict[str, Any]:
-    """Node 6: Render videos in parallel and combine."""
+    """Node 7: Render videos in parallel and combine."""
     if state.get("error"):
         return {}
-    print("\n Stage 6/6: Rendering videos in parallel and combining...")
+    print("\n Stage 7/7: Rendering videos in parallel and combining...")
     plan = state.get("plan") or []
     step_ids = [s["id"] for s in plan]
     render_result = render_and_combine(
@@ -151,11 +167,16 @@ def _route_after_parse(state: PipelineState) -> str:
 
 
 def build_pipeline_graph() -> StateGraph:
-    """Build the full pipeline as a LangGraph (linear chain)."""
+    """
+    Build the full pipeline as a LangGraph (linear chain).
+
+    parse → planner → step_descriptions → layout → code_gen → scene_fix → render → END
+    """
     graph = StateGraph(PipelineState)
     graph.add_node("parse", _parse_node)
     graph.add_node("planner", _planner_node)
     graph.add_node("step_descriptions", _step_descriptions_node)
+    graph.add_node("layout", _layout_node)          # NEW: placement grounding
     graph.add_node("code_gen", _code_gen_node)
     graph.add_node("scene_fix", _scene_fix_node)
     graph.add_node("render", _render_node)
@@ -163,7 +184,8 @@ def build_pipeline_graph() -> StateGraph:
     graph.set_entry_point("parse")
     graph.add_conditional_edges("parse", _route_after_parse, {"planner": "planner", "__end__": END})
     graph.add_edge("planner", "step_descriptions")
-    graph.add_edge("step_descriptions", "code_gen")
+    graph.add_edge("step_descriptions", "layout")   # layout before code_gen
+    graph.add_edge("layout", "code_gen")
     graph.add_edge("code_gen", "scene_fix")
     graph.add_edge("scene_fix", "render")
     graph.add_edge("render", END)

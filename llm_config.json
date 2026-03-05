@@ -1,0 +1,50 @@
+{
+  "_doc": [
+    "LLM routing for each pipeline stage.",
+    "Edit this file to change which model handles each node.",
+    "",
+    "Providers:  deepseek | openai | anthropic",
+    "DeepSeek models:   deepseek-chat  deepseek-reasoner",
+    "OpenAI models:     gpt-4o  gpt-4o-mini  gpt-4-turbo",
+    "Anthropic models:  claude-opus-4-6  claude-sonnet-4-6  claude-haiku-4-5-20251001",
+    "",
+    "Stages:",
+    "  default  - fallback when a stage is not listed below",
+    "  planner  - Node 2: turns user topic into a list of animation steps",
+    "  step     - Node 3: writes detailed narration + visual plan per step",
+    "  code     - Node 5: generates Manim scene code from the step description",
+    "  fix      - Node 6: patches/rewrites broken Manim code after a validation error",
+    "",
+    "Env vars take priority over this file:",
+    "  PLANNER_PROVIDER, PLANNER_MODEL",
+    "  STEP_PROVIDER,    STEP_MODEL",
+    "  CODE_PROVIDER,    CODE_MODEL",
+    "  FIX_PROVIDER,     FIX_MODEL",
+    "  LLM_PROVIDER      (global fallback)"
+  ],
+
+  "default": {
+    "provider": "deepseek",
+    "model":    "deepseek-chat"
+  },
+
+  "planner": {
+    "provider": "deepseek",
+    "model":    "deepseek-chat"
+  },
+
+  "step": {
+    "provider": "deepseek",
+    "model":    "deepseek-chat"
+  },
+
+  "code": {
+    "provider": "deepseek",
+    "model":    "deepseek-reasoner"
+  },
+
+  "fix": {
+    "provider": "deepseek",
+    "model":    "deepseek-reasoner"
+  }
+}

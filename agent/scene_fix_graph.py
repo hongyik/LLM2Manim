@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import MANIM_CLI, MANIM_RENDER_QUALITY, ROOT_DIR
 from .llm import get_llm
 from .api_check import check_scene
+from .memory_block import MemoryBlock, MEMORY_FILE
 
 
 class SceneFixState(TypedDict):
@@ -58,7 +59,8 @@ _ERROR_PATTERNS: List[Tuple[str, List[str]]] = [
                     r"ffmpeg.*not found", r"no such file or directory.*sox"]),
     ("import",    [r"NameError.*not defined", r"ImportError", r"ModuleNotFoundError"]),
     ("api",       [r"TypeError.*argument", r"TypeError.*takes", r"TypeError.*got",
-                   r"TypeError.*unexpected"]),
+                   r"TypeError.*unexpected", r"IndexError", r"KeyError",
+                   r"ValueError.*invalid", r"ValueError.*could not"]),
     ("attribute", [r"AttributeError"]),
     ("latex",     [r"LaTeX", r"pdflatex", r"! Missing", r"! Undefined",
                    r"Missing \$"]),
@@ -74,8 +76,10 @@ _ERROR_HINTS: Dict[str, str] = {
                  "If it is an unknown color name (e.g. MAGENTA, CYAN, VIOLET), "
                  "replace it with a valid Manim color: RED, GREEN, BLUE, YELLOW, "
                  "ORANGE, PURPLE, PINK, TEAL, GOLD, MAROON, WHITE, GRAY, BLACK.",
-    "api":       "A function is called with wrong arguments. "
-                 "Check Manim's API for the correct signature.",
+    "api":       "A function/method is called with wrong arguments or an index/key is out of range. "
+                 "Check Manim's API for the correct signature. "
+                 "For IndexError: ensure list/VGroup indices are valid and sequences are non-empty. "
+                 "For KeyError: check dictionary keys exist before accessing them.",
     "attribute": "A method or attribute does not exist on that object. "
                  "Check Manim docs for the correct attribute name.",
     "latex":     "LaTeX compilation failed. "
@@ -137,15 +141,36 @@ Fix hint: {hint}
 
 Error output (stderr/stdout):
 {error}
-
-Original code:
+{error_context}
+Original code (with line numbers):
 ```python
-{code}
+{code_numbered}
 ```
 
 Return patch(es). If a full rewrite is truly necessary, write FULL_REWRITE then the code.
 Preserve: class GenScene, KokoroService(voice="af_sarah", lang="en-us"), all step logic.\
 """
+
+
+def _number_lines(code: str) -> str:
+    """Return code with line numbers prepended (e.g. '   1 | import ...')."""
+    return "\n".join(f"{i+1:4d} | {ln}" for i, ln in enumerate(code.splitlines()))
+
+
+def _error_context_snippet(code: str, error: str, window: int = 12) -> str:
+    """Extract ±window lines around the line number mentioned in the error, if any."""
+    m = re.search(r"line (\d+)", error)
+    if not m:
+        return ""
+    lineno = int(m.group(1))
+    lines = code.splitlines()
+    start = max(0, lineno - window - 1)
+    end = min(len(lines), lineno + window)
+    snippet = "\n".join(f"{i+start+1:4d} | {lines[i+start]}" for i in range(end - start))
+    return (
+        f"\n\nERROR CONTEXT — lines {start+1}–{end} "
+        f"(error is at line {lineno}):\n```\n{snippet}\n```"
+    )
 
 
 def _parse_patches(raw: str) -> List[Tuple[str, str]]:
@@ -364,56 +389,125 @@ def _fix_scene_with_llm(state: SceneFixState) -> SceneFixState:
     original_code = state.get("code") or file_path.read_text(encoding="utf-8")
     error = state.get("error", "")
     category = state.get("error_category", "unknown")
+
+    # Augment error with ALL static violations found by AST scan so the LLM
+    # can fix multiple issues in one attempt instead of one per iteration.
+    static = check_scene(original_code, filename=str(file_path))
+    static_violations = static.get("violations", [])
+    if static_violations and not static.get("syntax_error"):
+        static_block = (
+            "\n\nADDITIONAL STATIC VIOLATIONS (found by AST scan — fix ALL of these too):\n"
+            + "\n".join(f"  - {v}" for v in static_violations)
+        )
+        error = error + static_block
     hint = _ERROR_HINTS.get(category, _ERROR_HINTS["unknown"])
     attempt = state.get("attempt", 0) + 1
     max_attempts = state.get("max_attempts", 2)
 
     print(f"     Patching {file_path.stem} [{category}] (attempt {attempt}/{max_attempts})...")
 
-    llm = get_llm(stage="code", temperature=0.2, max_tokens=4096)
-    user_content = _PATCH_USER.format(
-        category=category, hint=hint, error=error, code=original_code,
-    )
-    messages = [SystemMessage(content=_PATCH_SYSTEM), HumanMessage(content=user_content)]
-    response = llm.invoke(messages)
-    raw = response.content if hasattr(response, "content") else str(response)
+    # ── Memory lookup: inject known fix hints before LLM call ─────────────────
+    memory = MemoryBlock.load(MEMORY_FILE)
+    known_hints = memory.find_hints(error, category)
+    if known_hints:
+        memory_section = (
+            "\n\nKNOWN FIXES FROM MEMORY (apply these first before trying other approaches):\n"
+            + "\n".join(f"  - {h}" for h in known_hints)
+        )
+        hint = hint + memory_section
+        print(f"     [MEM]  {len(known_hints)} known fix hint(s) injected.")
 
-    # A) Try targeted patches first
-    patches = _parse_patches(raw)
-    fixed = original_code
+    llm = get_llm(stage="fix", temperature=0.2, max_tokens=4096)
 
-    if patches:
-        patched, failed = _apply_patches(original_code, patches)
-        if not failed:
-            print(f"     Applied {len(patches)} patch(es).")
-            fixed = patched
-        else:
-            print(f"     {len(failed)} patch(es) didn't match; falling back to full rewrite.")
-            full = _extract_full_rewrite(raw)
-            if full:
-                fixed = full
-            else:
-                # Partial success: keep what applied
-                fixed = patched
+    # Syntax errors require a full structural rewrite — patches never reliably close
+    # unclosed parens/brackets because the LLM needs to see the whole scope.
+    force_rewrite = (category == "syntax")
+
+    if force_rewrite:
+        system_content = (
+            _PATCH_SYSTEM
+            + "\n\nNOTE: This is a SYNTAX error. Do NOT emit patches. "
+            "You MUST respond with FULL_REWRITE followed by the complete corrected file."
+        )
+        user_extra = "\nSYNTAX ERROR — respond with FULL_REWRITE + corrected code only."
     else:
-        # No patches — check for FULL_REWRITE
+        system_content = _PATCH_SYSTEM
+        user_extra = ""
+
+    user_content = _PATCH_USER.format(
+        category=category,
+        hint=hint,
+        error=error,
+        error_context=_error_context_snippet(original_code, error),
+        code_numbered=_number_lines(original_code),
+    ) + user_extra
+    messages = [SystemMessage(content=system_content), HumanMessage(content=user_content)]
+    response = llm.invoke(messages)
+    _rc = response.content if hasattr(response, "content") else response
+    if isinstance(_rc, list):
+        raw = "\n".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in _rc)
+    else:
+        raw = str(_rc) if _rc is not None else ""
+
+    fixed = original_code
+    patches = []  # initialized here; only populated in the non-rewrite path
+
+    if force_rewrite:
+        # For syntax errors always expect a full rewrite
         full = _extract_full_rewrite(raw)
         if full:
-            print(f"     Full rewrite accepted.")
+            print(f"     Full rewrite accepted (syntax fix).")
             fixed = full
         else:
-            # Last resort: treat raw output as code
             m = re.search(r"```(?:python)?\s*(.*?)```", raw, re.DOTALL)
-            fixed = m.group(1).strip() if m else raw.strip()
-            print(f"     No structured output found; treating raw response as code.")
+            if m:
+                fixed = m.group(1).strip()
+                print(f"     Full rewrite extracted from code block (syntax fix).")
+            else:
+                print(f"     WARNING: no rewrite found in LLM response; keeping original.")
+    else:
+        # A) Try targeted patches first
+        patches = _parse_patches(raw)
+
+        if patches:
+            patched, failed = _apply_patches(original_code, patches)
+            if not failed:
+                print(f"     Applied {len(patches)} patch(es).")
+                fixed = patched
+            else:
+                print(f"     {len(failed)} patch(es) didn't match; falling back to full rewrite.")
+                full = _extract_full_rewrite(raw)
+                if full:
+                    fixed = full
+                else:
+                    fixed = patched
+        else:
+            # No patches — check for FULL_REWRITE
+            full = _extract_full_rewrite(raw)
+            if full:
+                print(f"     Full rewrite accepted.")
+                fixed = full
+            else:
+                # Last resort: treat raw output as code
+                m = re.search(r"```(?:python)?\s*(.*?)```", raw, re.DOTALL)
+                fixed = m.group(1).strip() if m else raw.strip()
+                print(f"     No structured output found; treating raw response as code.")
 
     fixed = _sanitize(fixed)
 
-    # C) Invariant check — don't write if broken
+    # C) Invariant check
     violations = _check_invariants(fixed)
     if violations:
-        print(f"     Invariant violations after fix: {violations}. Keeping original.")
-        fixed = original_code
+        syntax_only = all("SyntaxError" in v for v in violations)
+        if force_rewrite and syntax_only:
+            # Accept the new code even with a syntax error — it's a fresh rewrite and
+            # the next attempt will see the new error location and can iterate on it.
+            # Reverting to original_code would make every attempt start from the same
+            # broken file and never make progress.
+            print(f"     Rewrite still has syntax error; keeping new code for next attempt.")
+        else:
+            print(f"     Invariant violations after fix: {violations}. Keeping original.")
+            fixed = original_code
 
     file_path.write_text(fixed, encoding="utf-8")
     history: List[Dict[str, Any]] = list(state.get("history") or [])
@@ -531,30 +625,18 @@ def run_auto_fix_for_all_scenes(
     max_attempts_per_scene: int = 2,
 ) -> Dict[str, Any]:
     """
-    For each step's scene file, run the LangGraph scene-fix loop in parallel.
+    For each step's scene file, run the LangGraph scene-fix loop sequentially (TPM limits).
     Returns summary: fixed list, still_failed list, details per file.
     """
     async def _run_all() -> Dict[str, Any]:
         results: Dict[str, Any] = {"fixed": [], "still_failed": [], "details": {}}
-        tasks: List[asyncio.Task] = []
-        task_ids: List[str] = []
 
         for step_id in step_ids:
             path = output_dir / f"{step_id.lower()}.py"
             if not path.exists():
                 results["details"][step_id] = {"error": "file not found"}
                 continue
-            task_ids.append(step_id)
-            tasks.append(asyncio.create_task(
-                _auto_fix_scene_async(path, max_attempts=max_attempts_per_scene)
-            ))
-
-        if not tasks:
-            return results
-
-        scene_results = await asyncio.gather(*tasks)
-
-        for step_id, scene_result in zip(task_ids, scene_results):
+            scene_result = await _auto_fix_scene_async(path, max_attempts=max_attempts_per_scene)
             results["details"][step_id] = scene_result
             if scene_result.get("fixed"):
                 results["fixed"].append(step_id)
@@ -566,9 +648,40 @@ def run_auto_fix_for_all_scenes(
                 print(f"   Scene {step_id}: FAILED after {scene_result.get('attempts', 0)} attempt(s) -- {first}")
 
         _write_validation_report(results, output_dir)
+        _record_successes_to_memory(results)
         return results
 
     return asyncio.run(_run_all())
+
+
+def _record_successes_to_memory(results: Dict[str, Any]) -> None:
+    """
+    After all scenes finish, update the MemoryBlock with errors that were
+    successfully fixed this run. This teaches the memory new patterns over time.
+    """
+    fixed_scenes = results.get("fixed", [])
+    if not fixed_scenes:
+        return
+
+    memory = MemoryBlock.load(MEMORY_FILE)
+    recorded = 0
+
+    for step_id in fixed_scenes:
+        detail = results.get("details", {}).get(step_id, {})
+        if detail.get("attempts", 0) == 0:
+            continue   # passed on first try — no error was fixed
+
+        history: List[Dict] = detail.get("history", [])
+        # Find the last validate/api_check failure before the successful outcome
+        for entry in reversed(history):
+            if entry.get("node") in ("validate", "api_check") and entry.get("error"):
+                memory.record_success(entry["error"], entry.get("category", "unknown"))
+                recorded += 1
+                break
+
+    if recorded:
+        memory.save(MEMORY_FILE)
+        print(f"   [MEM]  {recorded} successful fix(es) recorded to memory.")
 
 
 def _write_validation_report(results: Dict[str, Any], output_dir: Path) -> None:

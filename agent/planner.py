@@ -4,9 +4,12 @@ Plan is a list of steps with id and goal; number and content depend on the input
 """
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from config import MAX_SECTIONS
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from .llm import get_llm
@@ -41,10 +44,15 @@ def plan_animation_steps(parsed_input: Dict[str, Any]) -> List[Dict[str, str]]:
     """
     topic = parsed_input.get("content", "")
     system_text = _load_plan_prompt()
+    system_text += f"\n\nIMPORTANT: Produce at most {MAX_SECTIONS} steps. Fewer is fine for simpler topics."
     user_text = f"Topic or concept to plan:\n\n{topic}"
 
     llm = get_llm(stage="planner", temperature=0.5, max_tokens=1024)
     messages = [SystemMessage(content=system_text), HumanMessage(content=user_text)]
     response = llm.invoke(messages)
     raw = response.content if hasattr(response, "content") else str(response)
-    return _parse_plan_response(raw)
+    steps = _parse_plan_response(raw)
+    if len(steps) > MAX_SECTIONS:
+        print(f"   [planner] Capping {len(steps)} steps → {MAX_SECTIONS} (MAX_SECTIONS={MAX_SECTIONS})")
+        steps = steps[:MAX_SECTIONS]
+    return steps

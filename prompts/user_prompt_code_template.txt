@@ -2,15 +2,16 @@ Generate Manim code for the following animation description:
 
 {animation_prompt}
 
-CONSISTENCY LEDGER — you MUST use these exact symbols, colors, and object names. Do not invent alternatives or rename anything already defined here:
+CONSISTENCY LEDGER — use these exact symbols, colors, and object names. Do not invent alternatives or rename anything already defined here:
 {ledger_text}
 
-Requirements:
-- Create a `GenScene` class with complete animation implementation
-- Include all necessary imports and setup
-- Use the symbols, colors, and object names from the ledger above
-- Add smooth transitions and proper timing
-- Ensure proper voiceover integration if needed
-- Include clear comments for code readability
-- Test the code to ensure it runs without errors
+{layout_spec}
 
+Requirements:
+- Create a `GenScene` class (inheriting ThreeDScene, VoiceoverScene) with complete animation
+- Follow the LAYOUT SPEC positions above: call obj.move_to(np.array([x, y, 0])) after creating each object
+- Group animations by anim_group: all elements of the same group go inside the SAME voiceover beat
+- Create objects BEFORE their voiceover block; animate them INSIDE it
+- Use self.wait(0.5) between voiceover beats for pacing
+- FadeOut all elements before transitioning to the next major section
+- Use symbols, colors, and names from the ledger above

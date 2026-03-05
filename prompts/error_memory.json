@@ -1,0 +1,196 @@
+{
+  "import:MAGENTA": {
+    "description": "MAGENTA is not a valid Manim CE color constant",
+    "fix_hint": "Replace MAGENTA with RED or use hex '#FF00FF'. Valid colors: RED GREEN BLUE YELLOW ORANGE PURPLE PINK TEAL GOLD MAROON WHITE GRAY BLACK.",
+    "pattern": "\\bMAGENTA\\b",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "import:CYAN": {
+    "description": "CYAN is not a valid Manim CE color constant",
+    "fix_hint": "Replace CYAN with TEAL or TEAL_A, or use hex '#00FFFF'.",
+    "pattern": "\\bCYAN\\b",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "import:VIOLET": {
+    "description": "VIOLET is not a valid Manim CE color constant",
+    "fix_hint": "Replace VIOLET with PURPLE or use hex '#EE82EE'.",
+    "pattern": "\\bVIOLET\\b",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "import:INDIGO": {
+    "description": "INDIGO is not a valid Manim CE color constant",
+    "fix_hint": "Replace INDIGO with PURPLE or DARK_BLUE, or use hex '#4B0082'.",
+    "pattern": "\\bINDIGO\\b",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "import:LIME": {
+    "description": "LIME is not a valid Manim CE color constant",
+    "fix_hint": "Replace LIME with GREEN or GREEN_A, or use hex '#00FF00'.",
+    "pattern": "\\bLIME\\b",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "attribute:camera_frame": {
+    "description": "self.camera_frame was renamed to self.camera.frame in Manim >= 0.17",
+    "fix_hint": "Replace every occurrence of .camera_frame with .camera.frame.",
+    "pattern": "camera_frame|AttributeError.*camera",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "api:radians_kwarg": {
+    "description": "Rotate() uses angle= keyword, not radians=",
+    "fix_hint": "Replace radians=X with angle=X in all Rotate() and similar animation calls.",
+    "pattern": "\\bradians\\s*=|unexpected keyword.*radians",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "api:fadein_positional": {
+    "description": "FadeIn/FadeOut direction must be a keyword argument (shift=)",
+    "fix_hint": "Use FadeIn(obj, shift=UP) instead of FadeIn(obj, UP). Direction is always a keyword argument in Manim CE.",
+    "pattern": "FadeIn.*takes.*positional|FadeOut.*takes.*positional|TypeError.*FadeIn|TypeError.*FadeOut",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "api:wrong_vgroup_string": {
+    "description": "VGroup only accepts Mobject instances, not plain strings",
+    "fix_hint": "Wrap any string inside Text() or Tex() before adding to VGroup. Example: VGroup(Text('label'), equation) not VGroup('label', equation).",
+    "pattern": "VGroup.*str|expected.*Mobject.*got.*str|TypeError.*VGroup",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "api:dashed_line_zero": {
+    "description": "DashedLine/Line with start == end crashes during Create()",
+    "fix_hint": "Ensure start and end points are different. If computed dynamically, add a guard: if np.allclose(start, end): skip or add small offset.",
+    "pattern": "DashedLine|zero.length|start.*equal.*end|Invalid point",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "api:create_text_deprecated": {
+    "description": "TextMobject is deprecated; use Text() or Tex()",
+    "fix_hint": "Replace TextMobject('...') with Text('...') for plain text or Tex(r'...') for LaTeX text.",
+    "pattern": "TextMobject|TexMobject",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "api:number_plane_range": {
+    "description": "NumberPlane x_range or y_range too large causes memory issues",
+    "fix_hint": "Keep NumberPlane ranges reasonable: x_range=[-7, 7], y_range=[-4, 4]. Very large ranges slow rendering significantly.",
+    "pattern": "NumberPlane.*range|MemoryError.*NumberPlane",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "import:kokoro_koko": {
+    "description": "Old kokoro_mv.koko import path no longer valid",
+    "fix_hint": "Replace 'from kokoro_mv.koko import KokoroService' with 'from kokoro_mv import KokoroService'.",
+    "pattern": "kokoro_mv\\.koko|ImportError.*kokoro",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "import:missing_numpy": {
+    "description": "numpy not imported but np.array() or np.* used",
+    "fix_hint": "Add 'import numpy as np' at the top of the file.",
+    "pattern": "NameError.*np\\.|name 'np' is not defined",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "import:missing_manim": {
+    "description": "Manim symbol used without importing",
+    "fix_hint": "Ensure 'from manim import *' is the first import. If a specific class is missing, check the Manim CE 0.17+ API — some names changed (e.g. GraphScene → Axes).",
+    "pattern": "NameError.*is not defined",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "latex:missing_dollar": {
+    "description": "LaTeX compilation error: stray $ or missing math mode",
+    "fix_hint": "In MathTex(), do NOT add $ or $$ — they are added automatically. Use raw strings: MathTex(r'\\frac{d}{dt}'). In Tex(), use $...$ (single dollar) for inline math, never $$...$$.",
+    "pattern": "Missing \\$|LaTeX Error|pdflatex|! Missing|runaway argument",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "latex:undefined_control": {
+    "description": "LaTeX undefined control sequence in MathTex expression",
+    "fix_hint": "Check all LaTeX commands are valid. Common mistakes: \\text{} needs amsmath (use Tex() instead), \\operatorname{} needs amsmath, use r-strings to avoid Python escape issues.",
+    "pattern": "Undefined control sequence|! Undefined|\\\\mathbf.*error|LaTeX.*undefined",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "latex:brace_mismatch": {
+    "description": "Mismatched braces in LaTeX expression",
+    "fix_hint": "Count opening { and closing } in each MathTex argument. Every { must have a matching }. Split long expressions into multiple string arguments to MathTex().",
+    "pattern": "Extra.*}|Missing.*}|brace|Paragraph ended",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "api:kokoro_model_path": {
+    "description": "Old KokoroService API used model_path and voices_path arguments",
+    "fix_hint": "Use: self.set_speech_service(KokoroService(voice='af_sarah', lang='en-us')). Remove model_path=, voices_path=, and old voice='af' arguments entirely.",
+    "pattern": "model_path|voices_path|unexpected keyword.*model|KokoroService.*got.*unexpected",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "dependency:sox": {
+    "description": "sox audio tool not found — required by manim-voiceover",
+    "fix_hint": "This is a system dependency error, not a code error. Install sox: https://sox.sourceforge.net/ or 'winget install sox'.",
+    "pattern": "sox.*not.*found|'sox'.*not.*recognized|sox.*command",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "syntax:indentation": {
+    "description": "Python IndentationError — likely caused by mixed tabs/spaces",
+    "fix_hint": "Use 4 spaces per indent level throughout. No tabs. Check that all code inside construct() is properly indented.",
+    "pattern": "IndentationError|unexpected indent|unindent does not match",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "api:self_play_outside": {
+    "description": "self.play() called outside construct() or outside a voiceover block incorrectly",
+    "fix_hint": "All self.play() calls must be inside construct(). Animation code inside 'with self.voiceover(...):' blocks is correct. Do not call self.play() inside list comprehensions or lambdas.",
+    "pattern": "self\\.play.*outside|cannot call.*play",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "api:mobject_not_in_scene": {
+    "description": "Animating a Mobject that was never added or already removed",
+    "fix_hint": "Ensure each object is created and added to the scene before animating. Do not FadeOut an object twice. Updaters on removed objects cause this error — call clear_updaters() before FadeOut.",
+    "pattern": "not in scene|object.*not.*added|Mobject.*not.*scene|updater.*removed",
+    "success_count": 0,
+    "last_seen": "",
+    "example_errors": []
+  },
+  "api:learned_70432": {
+    "description": "Learned fix: Animation 0: FadeIn(Text('Simple Harmonic Motion')):   0%|          | 0/15 [00:0",
+    "fix_hint": "This error was successfully fixed in a previous run. Error was: Animation 0: FadeIn(Text('Simple Harmonic Motion')):   0%|          | 0/15 [00:00<?, ?it/s]",
+    "pattern": "Animation\\ 0:\\ FadeIn\\(Text\\('Simple\\ Harmonic\\ Motion'\\)\\):\\ \\ \\ 0%\\|\\ \\ ",
+    "success_count": 1,
+    "last_seen": "2026-03-03",
+    "example_errors": [
+      "Animation 0: FadeIn(Text('Simple Harmonic Motion')):   0%|          | 0/15 [00:00<?, ?it/s]\nAnimation 0: FadeIn(Text('Simple Harmonic Motion')): 100%|##########| 15/15 [00:00<00:00, 149.95it/s]\n      "
+    ]
+  }
+}

@@ -6,6 +6,7 @@ from .scene_fix_graph import run_auto_fix_for_all_scenes
 from .pipeline_graph import build_pipeline_graph, run_pipeline, PipelineState
 from .ledger import Ledger
 from .memory_block import MemoryBlock
+from .layout_engine import extract_manifest, compute_layout, build_layout_specs, LayoutSpec
 
 __all__ = [
     "plan_animation_steps",
@@ -18,4 +19,8 @@ __all__ = [
     "PipelineState",
     "Ledger",
     "MemoryBlock",
+    "extract_manifest",
+    "compute_layout",
+    "build_layout_specs",
+    "LayoutSpec",
 ]

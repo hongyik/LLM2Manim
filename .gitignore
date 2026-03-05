@@ -25,3 +25,7 @@ Thumbs.db
 # Large model / binary assets (do not commit)
 *.onnx
 *.bin
+
+# Environment / secrets
+.env
+.env.*

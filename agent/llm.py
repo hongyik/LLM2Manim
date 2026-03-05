@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -52,10 +52,12 @@ def get_llm(
             max_tokens=max_tokens,
         )
 
-    return ChatOpenAI(
+    kwargs: Dict[str, Any] = dict(
         model=model,
-        openai_api_key=api_key,
-        openai_api_base=base_url,
+        api_key=api_key,
         temperature=temperature,
         max_tokens=max_tokens,
     )
+    if base_url:
+        kwargs["base_url"] = base_url
+    return ChatOpenAI(**kwargs)

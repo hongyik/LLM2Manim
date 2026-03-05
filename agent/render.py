@@ -5,7 +5,7 @@ Renders each step's scene in parallel, then concatenates videos in plan order.
 import os
 import shutil
 import subprocess
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -111,7 +111,7 @@ def render_all_parallel(
         # Kokoro TTS is memory-intensive; cap at 2 to avoid OOM when running in parallel.
         max_workers = 2
     print(f"   Rendering {len(step_ids)} scene(s) in parallel (max {max_workers} workers)...")
-    with ProcessPoolExecutor(max_workers=max_workers) as pool:
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {pool.submit(_render_one, a): a[0] for a in args_list}
         for future in as_completed(futures):
             step_id, path, err = future.result()
