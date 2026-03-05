@@ -37,15 +37,24 @@ def _parse_plan_response(raw: str) -> List[Dict[str, str]]:
     return [{"id": s.get("id", f"STEP_{i+1}"), "goal": s.get("goal", "")} for i, s in enumerate(steps)]
 
 
-def plan_animation_steps(parsed_input: Dict[str, Any]) -> List[Dict[str, str]]:
+def plan_animation_steps(
+    parsed_input: Dict[str, Any],
+    concept_context: str = "",
+) -> List[Dict[str, str]]:
     """
-    Dynamic planning: from user input (topic), return a list of steps.
+    Dynamic planning: from user input (topic) + optional concept context, return a list of steps.
     Each step: {"id": "...", "goal": "..."}.
+    concept_context: summarized textbook/slides content from concept_retrieval (may be empty).
     """
     topic = parsed_input.get("content", "")
     system_text = _load_plan_prompt()
     system_text += f"\n\nIMPORTANT: Produce at most {MAX_SECTIONS} steps. Fewer is fine for simpler topics."
     user_text = f"Topic or concept to plan:\n\n{topic}"
+    if concept_context.strip():
+        user_text += (
+            "\n\nRELEVANT CONCEPT CONTEXT (from textbooks/slides — use this to inform your plan):\n"
+            + concept_context
+        )
 
     llm = get_llm(stage="planner", temperature=0.5, max_tokens=1024)
     messages = [SystemMessage(content=system_text), HumanMessage(content=user_text)]

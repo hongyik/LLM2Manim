@@ -17,7 +17,8 @@
     ],
     "additionalDirectories": [
       "c:\\Users\\kehon\\OneDrive\\Desktop\\Animated-math-and-physics\\langchain_agent",
-      "c:\\Users\\kehon\\.claude\\projects\\c--Users-kehon-OneDrive-Desktop-Animated-math-and-physics\\memory"
+      "c:\\Users\\kehon\\.claude\\projects\\c--Users-kehon-OneDrive-Desktop-Animated-math-and-physics\\memory",
+      "c:\\Users\\kehon\\OneDrive\\Desktop\\Animated-math-and-physics\\corpus"
     ]
   }
 }

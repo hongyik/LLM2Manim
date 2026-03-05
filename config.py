@@ -155,3 +155,10 @@ MANIM_RENDER_QUALITY = os.getenv("MANIM_RENDER_QUALITY", "l")
 # Manim CLI (command or path to executable)
 # Use sys.executable so subprocesses always use the same venv Python, not the system Python.
 MANIM_CLI = os.getenv("MANIM_CLI", f"{sys.executable} -m manim")
+
+# ── Agentic Retrieval corpora ──────────────────────────────────────────────────
+# Drop .txt/.md files here; the pipeline will grep them before planning/coding.
+CORPUS_TEXTBOOKS_DIR = ROOT_DIR / "corpus" / "textbooks"
+CORPUS_MANIM_EXAMPLES_DIR = ROOT_DIR / "corpus" / "manim_examples"
+# Max characters returned from corpus grep (controls token budget per retrieval call).
+RETRIEVAL_MAX_CHARS = int(os.getenv("RETRIEVAL_MAX_CHARS", "8000"))

@@ -1,9 +1,14 @@
 """
 LangGraph pipeline: each LangChain stage is a node.
-State flows: parse -> planner -> step_descriptions -> code_gen -> scene_fix -> render -> END
 
-The pipeline carries a short-term working-memory LEDGER across the description and code stages
-so that all scenes share consistent notation, visual style, and object naming.
+State flows:
+  parse → concept_retrieval → planner → step_descriptions → layout
+        → code_retrieval → pseudocode_gen → code_gen → scene_fix → render → END
+
+New nodes vs. original:
+  concept_retrieval — LLM+grep search over corpus/textbooks/ (before planner)
+  code_retrieval    — LLM+grep search over corpus/manim_examples/ + code_patterns.txt (before code_gen)
+  pseudocode_gen    — per-scene structured outline injected into code_gen prompt
 """
 import json
 from pathlib import Path
@@ -21,16 +26,22 @@ from .code_agent import generate_code_for_descriptions
 from .scene_fix_graph import run_auto_fix_for_all_scenes
 from .render import render_and_combine
 from .layout_engine import build_layout_specs
+from .concept_retrieval import retrieve_concepts
+from .code_retrieval import retrieve_code_examples
+from .pseudocode_agent import generate_pseudocode
 
 
 class PipelineState(TypedDict, total=False):
     """State passed between pipeline nodes."""
     user_input: str
     parsed: Dict[str, Any]
+    concept_context: str            # from concept_retrieval
     plan: List[Dict[str, str]]
     descriptions: Dict[str, Any]
     ledger: Dict[str, Any]          # short-term working memory ledger
     layout_specs: Dict[str, str]    # {step_id: layout_spec_prompt_text}
+    code_examples: str              # from code_retrieval
+    pseudocode: Dict[str, str]      # {step_id: outline_text} from pseudocode_gen
     code_result: Dict[str, Any]
     fix_result: Dict[str, Any]
     render_result: Dict[str, Any]
@@ -40,7 +51,7 @@ class PipelineState(TypedDict, total=False):
 
 def _parse_node(state: PipelineState) -> Dict[str, Any]:
     """Node 1: Parse user input."""
-    print("\n Stage 1/6: Parsing input...")
+    print("\n Stage 1/10: Parsing input...")
     user_input = (state.get("user_input") or "").strip()
     if not user_input:
         return {"error": "Input is empty. Please provide a math/physics topic."}
@@ -50,28 +61,39 @@ def _parse_node(state: PipelineState) -> Dict[str, Any]:
     }
 
 
-def _planner_node(state: PipelineState) -> Dict[str, Any]:
-    """Node 2: Dynamic animation plan from input."""
+def _concept_retrieval_node(state: PipelineState) -> Dict[str, Any]:
+    """Node 2: Retrieve relevant textbook/slides content (LLM+grep)."""
     if state.get("error"):
         return {}
-    print("\n Stage 2/6: Planning animation steps (dynamic from input)...")
+    print("\n Stage 2/10: Concept retrieval (textbook/slides corpus)...")
+    user_input = (state.get("parsed") or {}).get("content", "")
+    concept_context = retrieve_concepts(user_input)
+    stages = {**(state.get("stages") or {}), "concept_retrieval": {"chars": len(concept_context)}}
+    return {"concept_context": concept_context, "stages": stages}
+
+
+def _planner_node(state: PipelineState) -> Dict[str, Any]:
+    """Node 3: Dynamic animation plan from input + concept context."""
+    if state.get("error"):
+        return {}
+    print("\n Stage 3/10: Planning animation steps...")
     parsed = state.get("parsed") or {}
-    plan = plan_animation_steps(parsed)
+    concept_context = state.get("concept_context") or ""
+    plan = plan_animation_steps(parsed, concept_context=concept_context)
     print(f"   Planned {len(plan)} steps: {[s['id'] for s in plan]}")
     stages = {**(state.get("stages") or {}), "plan": {"steps": plan}}
     return {"plan": plan, "stages": stages}
 
 
 def _step_descriptions_node(state: PipelineState) -> Dict[str, Any]:
-    """Node 3: Step descriptions with memory of previous steps and running ledger."""
+    """Node 4: Step descriptions with memory of previous steps and running ledger."""
     if state.get("error"):
         return {}
-    print("\n Stage 3/6: Generating step descriptions (with step memory + ledger)...")
+    print("\n Stage 4/10: Generating step descriptions (with step memory + ledger)...")
     parsed = state.get("parsed") or {}
     plan = state.get("plan") or []
     desc_result = generate_step_descriptions_with_memory(parsed, plan)
 
-    # Save descriptions and ledger snapshot
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUTPUT_DIR / "animation_descriptions.json").write_text(
         json.dumps(desc_result["step_results"], indent=2, ensure_ascii=False),
@@ -91,10 +113,10 @@ def _step_descriptions_node(state: PipelineState) -> Dict[str, Any]:
 
 
 def _layout_node(state: PipelineState) -> Dict[str, Any]:
-    """Node 4: Compute deterministic layout specs for each scene (no LLM)."""
+    """Node 5: Compute deterministic layout specs for each scene (no LLM)."""
     if state.get("error"):
         return {}
-    print("\n Stage 4/7: Computing layout specs (placement + animation order)...")
+    print("\n Stage 5/10: Computing layout specs (placement + animation order)...")
     desc = state.get("descriptions") or {}
     step_results = desc.get("step_results") or {}
     layout_specs = build_layout_specs(step_results)
@@ -103,27 +125,62 @@ def _layout_node(state: PipelineState) -> Dict[str, Any]:
     return {"layout_specs": layout_specs, "stages": stages}
 
 
-def _code_gen_node(state: PipelineState) -> Dict[str, Any]:
-    """Node 5: Generate Manim code for each step, injecting the ledger + layout specs."""
+def _code_retrieval_node(state: PipelineState) -> Dict[str, Any]:
+    """Node 6: Retrieve relevant Manim code examples (LLM+grep)."""
     if state.get("error"):
         return {}
-    print("\n Stage 5/7: Generating Manim code (ledger-consistent, layout-grounded)...")
+    print("\n Stage 6/10: Code retrieval (Manim examples corpus)...")
+    plan = state.get("plan") or []
+    descriptions = (state.get("descriptions") or {}).get("step_results") or {}
+    code_examples = retrieve_code_examples(plan, descriptions)
+    stages = {**(state.get("stages") or {}), "code_retrieval": {"chars": len(code_examples)}}
+    return {"code_examples": code_examples, "stages": stages}
+
+
+def _pseudocode_gen_node(state: PipelineState) -> Dict[str, Any]:
+    """Node 7: Generate per-scene structured outline (pseudo-code) for code_gen."""
+    if state.get("error"):
+        return {}
+    print("\n Stage 7/10: Generating pseudo-code outlines (per scene)...")
+    step_results = (state.get("descriptions") or {}).get("step_results") or {}
+    pseudocode = generate_pseudocode(
+        step_results,
+        concept_context=state.get("concept_context") or "",
+        code_examples=state.get("code_examples") or "",
+        ledger=state.get("ledger"),
+    )
+    print(f"   Pseudo-code generated for {len(pseudocode)} scene(s).")
+    stages = {**(state.get("stages") or {}), "pseudocode": {"scenes": list(pseudocode.keys())}}
+    return {"pseudocode": pseudocode, "stages": stages}
+
+
+def _code_gen_node(state: PipelineState) -> Dict[str, Any]:
+    """Node 8: Generate Manim code for each step, injecting ledger, layout, pseudocode, examples."""
+    if state.get("error"):
+        return {}
+    print("\n Stage 8/10: Generating Manim code (ledger + layout + pseudocode + examples)...")
     desc = state.get("descriptions") or {}
     step_results = desc.get("step_results") or {}
     ledger = state.get("ledger")
     layout_specs = state.get("layout_specs") or {}
+    pseudocode = state.get("pseudocode") or {}
+    code_examples = state.get("code_examples") or ""
     code_result = generate_code_for_descriptions(
-        step_results, ledger=ledger, layout_specs=layout_specs
+        step_results,
+        ledger=ledger,
+        layout_specs=layout_specs,
+        pseudocode=pseudocode,
+        code_examples=code_examples,
     )
     stages = {**(state.get("stages") or {}), "code_generation": code_result}
     return {"code_result": code_result, "stages": stages}
 
 
 def _scene_fix_node(state: PipelineState) -> Dict[str, Any]:
-    """Node 6: LangGraph auto-fix failed Manim scenes."""
+    """Node 9: LangGraph auto-fix failed Manim scenes."""
     if state.get("error"):
         return {}
-    print("\n Stage 6/7: Auto-fixing scenes (validate -> fix -> validate)...")
+    print("\n Stage 9/10: Auto-fixing scenes (validate -> fix -> validate)...")
     plan = state.get("plan") or []
     step_ids = [s["id"] for s in plan]
     fix_result = run_auto_fix_for_all_scenes(
@@ -138,10 +195,10 @@ def _scene_fix_node(state: PipelineState) -> Dict[str, Any]:
 
 
 def _render_node(state: PipelineState) -> Dict[str, Any]:
-    """Node 7: Render videos in parallel and combine."""
+    """Node 10: Render videos in parallel and combine."""
     if state.get("error"):
         return {}
-    print("\n Stage 7/7: Rendering videos in parallel and combining...")
+    print("\n Stage 10/10: Rendering videos in parallel and combining...")
     plan = state.get("plan") or []
     step_ids = [s["id"] for s in plan]
     render_result = render_and_combine(
@@ -162,30 +219,39 @@ def _render_node(state: PipelineState) -> Dict[str, Any]:
 
 
 def _route_after_parse(state: PipelineState) -> str:
-    """If parse set error, end; else continue to planner."""
-    return "__end__" if state.get("error") else "planner"
+    return "__end__" if state.get("error") else "concept_retrieval"
 
 
 def build_pipeline_graph() -> StateGraph:
     """
     Build the full pipeline as a LangGraph (linear chain).
 
-    parse → planner → step_descriptions → layout → code_gen → scene_fix → render → END
+    parse → concept_retrieval → planner → step_descriptions → layout
+          → code_retrieval → pseudocode_gen → code_gen → scene_fix → render → END
     """
     graph = StateGraph(PipelineState)
     graph.add_node("parse", _parse_node)
+    graph.add_node("concept_retrieval", _concept_retrieval_node)
     graph.add_node("planner", _planner_node)
     graph.add_node("step_descriptions", _step_descriptions_node)
-    graph.add_node("layout", _layout_node)          # NEW: placement grounding
+    graph.add_node("layout", _layout_node)
+    graph.add_node("code_retrieval", _code_retrieval_node)
+    graph.add_node("pseudocode_gen", _pseudocode_gen_node)
     graph.add_node("code_gen", _code_gen_node)
     graph.add_node("scene_fix", _scene_fix_node)
     graph.add_node("render", _render_node)
 
     graph.set_entry_point("parse")
-    graph.add_conditional_edges("parse", _route_after_parse, {"planner": "planner", "__end__": END})
+    graph.add_conditional_edges(
+        "parse", _route_after_parse,
+        {"concept_retrieval": "concept_retrieval", "__end__": END},
+    )
+    graph.add_edge("concept_retrieval", "planner")
     graph.add_edge("planner", "step_descriptions")
-    graph.add_edge("step_descriptions", "layout")   # layout before code_gen
-    graph.add_edge("layout", "code_gen")
+    graph.add_edge("step_descriptions", "layout")
+    graph.add_edge("layout", "code_retrieval")
+    graph.add_edge("code_retrieval", "pseudocode_gen")
+    graph.add_edge("pseudocode_gen", "code_gen")
     graph.add_edge("code_gen", "scene_fix")
     graph.add_edge("scene_fix", "render")
     graph.add_edge("render", END)
@@ -194,8 +260,8 @@ def build_pipeline_graph() -> StateGraph:
 
 def run_pipeline(user_input: str) -> Dict[str, Any]:
     """
-    Run the full pipeline via LangGraph. Returns the same shape as process_visualization().
-    Sets status "error" when: parse error, any stage raises, scene_fix has still_failed, or render status is not "success".
+    Run the full pipeline via LangGraph.
+    Returns {"status": "success"|"error", "stages": {...}, "error": str|None}.
     """
     app = build_pipeline_graph()
     initial: PipelineState = {"user_input": user_input, "stages": {}}
@@ -205,7 +271,6 @@ def run_pipeline(user_input: str) -> Dict[str, Any]:
     if final.get("error"):
         return {"status": "error", "stages": stages, "error": final["error"]}
 
-    # Treat scene-fix or render failures as overall failure so callers can test with result["status"] == "error"
     fix_result = stages.get("scene_auto_fix") or {}
     if fix_result.get("still_failed"):
         return {

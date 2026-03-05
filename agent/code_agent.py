@@ -122,12 +122,24 @@ async def _generate_code_for_one_step(
     user_template: str,
     ledger_text: str,
     layout_spec_text: str = "",
+    pseudocode_text: str = "",
+    code_examples_text: str = "",
 ) -> tuple:
     """Generate Manim code for a single step (async). Returns (step_id, code)."""
+    pseudocode_section = (
+        f"\nSCENE PSEUDO-CODE OUTLINE (follow this structure):\n{pseudocode_text}\n"
+        if pseudocode_text.strip() else ""
+    )
+    code_examples_section = (
+        f"\nRELEVANT MANIM CODE EXAMPLES (use as reference):\n{code_examples_text}\n"
+        if code_examples_text.strip() else ""
+    )
     user_prompt = user_template.format(
         animation_prompt=description,
         ledger_text=ledger_text,
         layout_spec=layout_spec_text,
+        pseudocode_section=pseudocode_section,
+        code_examples_section=code_examples_section,
     )
     messages = [
         SystemMessage(content=system_prompt),
@@ -181,18 +193,24 @@ async def _generate_code_parallel_async(
     step_results: Dict[str, Any],
     ledger_text: str,
     layout_specs: Optional[Dict[str, str]] = None,
+    pseudocode: Optional[Dict[str, str]] = None,
+    code_examples: str = "",
 ) -> Dict[str, str]:
     """Run code generation for all steps sequentially to stay within TPM rate limits."""
     system_prompt, user_template = _load_code_prompts()
     llm = get_llm(stage="code", temperature=0, max_tokens=4096)
     layout_specs = layout_specs or {}
+    pseudocode = pseudocode or {}
     code_results = {}
     for step_id, data in step_results.items():
         try:
             _, code = await _generate_code_for_one_step(
                 llm, step_id, data["description"],
                 system_prompt, user_template,
-                ledger_text, layout_specs.get(step_id, ""),
+                ledger_text,
+                layout_specs.get(step_id, ""),
+                pseudocode.get(step_id, ""),
+                code_examples,
             )
             code_results[step_id] = code
         except Exception as exc:
@@ -205,13 +223,17 @@ def generate_code_for_descriptions(
     step_results: Dict[str, Any],
     ledger: Optional[Dict[str, Any]] = None,
     layout_specs: Optional[Dict[str, str]] = None,
+    pseudocode: Optional[Dict[str, str]] = None,
+    code_examples: str = "",
 ) -> Dict[str, Any]:
     """
     step_results:  {step_id: {"description": "..."}}.
     ledger:        final ledger dict from step_agent (notation, visual_style, objects).
     layout_specs:  {step_id: layout_spec_prompt_text} from layout_engine.
+    pseudocode:    {step_id: outline_text} from pseudocode_agent.
+    code_examples: retrieved Manim code snippets from code_retrieval.
 
-    Generates code for all steps in parallel, then writes one .py per step.
+    Generates code for all steps sequentially, then writes one .py per step.
     Returns {"status": "success", "code_results": {...}}.
     """
     ledger_obj = Ledger.from_dict(ledger) if ledger else Ledger()
@@ -221,7 +243,9 @@ def generate_code_for_descriptions(
     asyncio.set_event_loop(loop)
     try:
         code_results = loop.run_until_complete(
-            _generate_code_parallel_async(step_results, ledger_text, layout_specs)
+            _generate_code_parallel_async(
+                step_results, ledger_text, layout_specs, pseudocode, code_examples
+            )
         )
     finally:
         loop.close()

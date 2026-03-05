@@ -7,6 +7,9 @@ from .pipeline_graph import build_pipeline_graph, run_pipeline, PipelineState
 from .ledger import Ledger
 from .memory_block import MemoryBlock
 from .layout_engine import extract_manifest, compute_layout, build_layout_specs, LayoutSpec
+from .concept_retrieval import retrieve_concepts
+from .code_retrieval import retrieve_code_examples
+from .pseudocode_agent import generate_pseudocode
 
 __all__ = [
     "plan_animation_steps",
@@ -23,4 +26,7 @@ __all__ = [
     "compute_layout",
     "build_layout_specs",
     "LayoutSpec",
+    "retrieve_concepts",
+    "retrieve_code_examples",
+    "generate_pseudocode",
 ]
