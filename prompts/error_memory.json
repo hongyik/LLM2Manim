@@ -192,5 +192,16 @@
     "example_errors": [
       "Animation 0: FadeIn(Text('Simple Harmonic Motion')):   0%|          | 0/15 [00:00<?, ?it/s]\nAnimation 0: FadeIn(Text('Simple Harmonic Motion')): 100%|##########| 15/15 [00:00<00:00, 149.95it/s]\n      "
     ]
+  },
+  "unknown:learned_25572": {
+    "description": "Learned fix: ┌───────────────────── Traceback (most recent call last) ─────────────────────┐",
+    "fix_hint": "This error was successfully fixed in a previous run. Error was: ┌───────────────────── Traceback (most recent call last) ─────────────────────┐",
+    "pattern": "┌─────────────────────\\ Traceback\\ \\(most\\ recent\\ call\\ last\\)\\ ───",
+    "success_count": 3,
+    "last_seen": "2026-03-05",
+    "example_errors": [
+      "┌───────────────────── Traceback (most recent call last) ─────────────────────┐\n│ C:\\Users\\kehon\\OneDrive\\Desktop\\Animated-math-and-physics\\Amp-venv\\Lib\\site │\n│ -packages\\manim\\cli\\render\\commands.py",
+      "Animation 0: Create(NumberPlane of 4 submobjects), etc.:   0%|          | 0/1 [00:00<?, ?it/s]\n                                                                                              \n\nAnimation"
+    ]
   }
 }
