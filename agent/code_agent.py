@@ -26,6 +26,7 @@ from config import (
     SYSTEM_PROMPT_CODE_FILE,
     USER_PROMPT_CODE_TEMPLATE_FILE,
     CODE_PATTERNS_FILE,
+    MANIM_RULES_FILE,
 )
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -34,6 +35,86 @@ from .ledger import Ledger
 
 
 CODE_AGENT_DEBUG = os.getenv("CODE_AGENT_DEBUG")
+
+# ── Self-reflection ────────────────────────────────────────────────────────────
+_MANIM_RULES: str = ""  # module-level cache; loaded once on first use
+
+
+def _load_manim_rules() -> str:
+    global _MANIM_RULES
+    if not _MANIM_RULES and MANIM_RULES_FILE.exists():
+        _MANIM_RULES = MANIM_RULES_FILE.read_text(encoding="utf-8")
+    return _MANIM_RULES
+
+
+_REFLECT_SYSTEM = (
+    "You are a strict Manim code reviewer. "
+    "Analyze the Python code against the rules provided. "
+    "List only CLEAR violations as concise bullet points (one per line). "
+    "If there are NO violations, respond with exactly: OK"
+)
+
+
+async def _self_reflect_and_fix(
+    code: str,
+    original_messages: list,
+    code_llm,
+    reviewer_llm,
+    step_id: str,
+) -> str:
+    """
+    Ask a cheap reviewer LLM to check `code` against manim_rules.md.
+    If violations are found, regenerate once using the original prompt + violations.
+    Returns (possibly improved) code. Always degrades gracefully on failure.
+    """
+    rules = _load_manim_rules()
+    if not rules or not code.strip():
+        return code
+
+    try:
+        review_prompt = (
+            f"RULES:\n{rules}\n\n"
+            f"CODE TO REVIEW:\n```python\n{code}\n```\n\n"
+            "List any rule violations with brief explanation. "
+            "If no violations, respond with exactly: OK"
+        )
+        review_resp = await reviewer_llm.ainvoke([
+            SystemMessage(content=_REFLECT_SYSTEM),
+            HumanMessage(content=review_prompt),
+        ])
+        violations = _content_to_str(
+            review_resp.content if hasattr(review_resp, "content") else review_resp
+        ).strip()
+
+        if not violations or violations.upper().startswith("OK"):
+            print(f"   [code_agent] Self-review OK for step '{step_id}'")
+            return code
+
+        # Count bullet points for the log line
+        n = sum(1 for ln in violations.splitlines() if ln.strip()[:1] in "-•*" or ln.strip()[:1].isdigit())
+        print(f"   [code_agent] Self-review: {n or 'some'} violation(s) in '{step_id}' — regenerating...")
+
+        # Re-invoke the code LLM with violations appended to the original user message
+        fix_note = (
+            "\n\nSELF-REVIEW FOUND VIOLATIONS — your new code MUST fix ALL of these:\n"
+            + violations
+        )
+        augmented = list(original_messages)
+        augmented[-1] = HumanMessage(content=augmented[-1].content + fix_note)
+
+        regen_resp = await code_llm.ainvoke(augmented)
+        regen_raw = _content_to_str(
+            regen_resp.content if hasattr(regen_resp, "content") else regen_resp
+        )
+        regen_code = _extract_python_code(regen_raw)
+        if regen_code.strip():
+            return regen_code
+        print(f"   [code_agent] Regeneration empty for step '{step_id}' — keeping original")
+        return code
+
+    except Exception as exc:
+        print(f"   [code_agent] Self-review skipped for step '{step_id}': {exc}")
+        return code
 
 
 def _load_code_prompts() -> tuple:
@@ -124,6 +205,7 @@ async def _generate_code_for_one_step(
     layout_spec_text: str = "",
     pseudocode_text: str = "",
     code_examples_text: str = "",
+    reviewer_llm=None,
 ) -> tuple:
     """Generate Manim code for a single step (async). Returns (step_id, code)."""
     pseudocode_section = (
@@ -158,6 +240,10 @@ async def _generate_code_for_one_step(
             f"   [code_agent] WARNING: extracted empty code for step '{step_id}'. "
             f"Raw preview: {raw[:240]!r}"
         )
+
+    # Self-reflection: ask reviewer LLM to check the code, regenerate if violations found
+    if reviewer_llm is not None and code.strip():
+        code = await _self_reflect_and_fix(code, messages, llm, reviewer_llm, step_id)
 
     if CODE_AGENT_DEBUG:
         try:
@@ -199,6 +285,8 @@ async def _generate_code_parallel_async(
     """Run code generation for all steps sequentially to stay within TPM rate limits."""
     system_prompt, user_template = _load_code_prompts()
     llm = get_llm(stage="code", temperature=0, max_tokens=4096)
+    # Cheap chat model used as reviewer (not the reasoning model — just rule-checking)
+    reviewer_llm = get_llm(stage="planner", temperature=0, max_tokens=512)
     layout_specs = layout_specs or {}
     pseudocode = pseudocode or {}
     code_results = {}
@@ -211,6 +299,7 @@ async def _generate_code_parallel_async(
                 layout_specs.get(step_id, ""),
                 pseudocode.get(step_id, ""),
                 code_examples,
+                reviewer_llm=reviewer_llm,
             )
             code_results[step_id] = code
         except Exception as exc:

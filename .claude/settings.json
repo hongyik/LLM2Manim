@@ -13,7 +13,8 @@
       "Bash(\"c:\\\\Users\\\\kehon\\\\OneDrive\\\\Desktop\\\\Animated-math-and-physics\\\\Amp-venv\\\\Scripts\\\\python.exe\" -c \"import dotenv; print\\(''ok''\\)\")",
       "Bash(\"Amp-venv\\\\Scripts\\\\python.exe\":*)",
       "Bash(\"Amp-venv\\\\Scripts\\\\python.exe\" -m pip show:*)",
-      "Bash(\"Amp-venv\\\\Scripts\\\\python.exe\" -c \"from agent.llm import get_llm; from agent.code_agent import generate_code_for_descriptions; print\\(''imports ok''\\)\")"
+      "Bash(\"Amp-venv\\\\Scripts\\\\python.exe\" -c \"from agent.llm import get_llm; from agent.code_agent import generate_code_for_descriptions; print\\(''imports ok''\\)\")",
+      "Bash(find:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\kehon\\OneDrive\\Desktop\\Animated-math-and-physics\\langchain_agent",

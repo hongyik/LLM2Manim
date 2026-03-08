@@ -6,19 +6,27 @@ config:
 graph TD;
 	__start__([<p>__start__</p>]):::first
 	parse(parse)
+	concept_retrieval(concept_retrieval)
 	planner(planner)
 	step_descriptions(step_descriptions)
+	layout(layout)
+	code_retrieval(code_retrieval)
+	pseudocode_gen(pseudocode_gen)
 	code_gen(code_gen)
 	scene_fix(scene_fix)
 	render(render)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> parse;
 	code_gen --> scene_fix;
+	code_retrieval --> pseudocode_gen;
+	concept_retrieval --> planner;
+	layout --> code_retrieval;
 	parse -.-> __end__;
-	parse -.-> planner;
+	parse -.-> concept_retrieval;
 	planner --> step_descriptions;
+	pseudocode_gen --> code_gen;
 	scene_fix --> render;
-	step_descriptions --> code_gen;
+	step_descriptions --> layout;
 	render --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0

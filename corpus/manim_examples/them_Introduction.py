@@ -39,19 +39,10 @@ class Thermodynamics_Introduction(VoiceoverScene,ThreeDScene):
         title = Text("Thermodynamics: overview", font_size=40)
         title.to_edge(UP)
         
-        # Create left side group (Boltzmann portrait)
-        boltzmann_image = ImageMobject(os.path.join("dataset", "AE302", "images", "boltzmann.jpg"))
-        boltzmann_image.scale(0.4)
+        # Create left side group (Boltzmann name)
         boltzmann_name = Text("Ludwig Boltzmann\n(1844-1906)", font_size=30)
-        boltzmann_name.next_to(boltzmann_image, DOWN)
-        boltzmann_group = Group(boltzmann_image, boltzmann_name)
+        boltzmann_group = Group(boltzmann_name)
         boltzmann_group.to_edge(LEFT, buff=1)  # Position to left side
-        
-        # Create right side group (quote)
-        book = ImageMobject(os.path.join("dataset", "AE302", "images", "thermo_quote.jpg"))
-        book.scale(0.4)
-        quote_group = Group(book)
-        quote_group.to_edge(RIGHT, buff=1)  # Position to right side
         
         # Create the container box
         box = Cube(side_length=4)
@@ -122,7 +113,6 @@ class Thermodynamics_Introduction(VoiceoverScene,ThreeDScene):
 
         with self.voiceover(text="Now, I want to introduce you to someone pretty important - this is Ludwig Boltzmann. He was one of the pioneers in this field, but even he found it quite challenging to wrap his head around some of these concepts.") as tracker:
             self.play(FadeIn(boltzmann_group))
-            self.play(FadeIn(quote_group))
             self.wait(1)
             
         # Transition to particle simulation
@@ -130,7 +120,6 @@ class Thermodynamics_Introduction(VoiceoverScene,ThreeDScene):
             # Fade out portrait and quote
             self.play(
                 FadeOut(boltzmann_group),
-                FadeOut(quote_group),
                 run_time=1
             )
             

@@ -668,11 +668,10 @@ class VectorInterpretationsScene(VoiceoverScene,ThreeDScene):
             self.play(FadeOut(question), FadeOut(v), FadeOut(v_label), FadeOut(scaled_label), FadeOut(grid))
             
             # Create rocket and force vector
-            rocket = SVGMobject("rocket.svg").scale(0.5)
             force = Arrow(start=ORIGIN, end=[2, 0, 0], color=RED, buff=0, stroke_width=4)
-            
-            # Group rocket and force
-            rocket_force = VGroup(rocket, force).arrange(RIGHT)
+
+            # Group with force vector
+            rocket_force = VGroup(force)
             
             # Animate scaling
             self.play(Create(rocket_force))

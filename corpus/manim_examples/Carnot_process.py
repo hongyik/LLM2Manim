@@ -733,11 +733,6 @@ class CarnotProcessScene(ThreeDScene, VoiceoverScene):
             # Clear previous content
             self.clear()
             
-            # Load Carnot's image
-            carnot_image = ImageMobject("dataset/AE302/images/SadiCarnot.jpg")
-            carnot_image.height = 3  # Adjust size
-            carnot_image.to_edge(LEFT, buff=1)
-
             # Create Carnot's information
             carnot_name = Text("Sadi Carnot", font_size=30, color=GOLD_B)
             carnot_years = Text("(1796-1832)", font_size=25, color=GRAY)
@@ -762,11 +757,10 @@ class CarnotProcessScene(ThreeDScene, VoiceoverScene):
                 contribution
             ).arrange(DOWN, buff=0.2)
             
-            carnot_info.next_to(carnot_image, RIGHT, buff=1)
+            carnot_info.to_edge(LEFT, buff=1)
             
             # Animate
             self.play(
-                FadeIn(carnot_image),
                 Write(carnot_info),
                 run_time=tracker.duration
             )
@@ -861,14 +855,10 @@ class CarnotProcessScene(ThreeDScene, VoiceoverScene):
             # Position at center of cylinder, lower than before
             temp_rect.move_to([3, -1.25, 0])  # Shifted right by 3 units and down
             
-            # Add heat source (fire image)
-            heat_source = SVGMobject("dataset/AE302/images/fire.svg", fill_opacity=1)
-            heat_source.scale(0.5)  # Adjust scale as needed
-            heat_source.next_to(piston_system, DOWN, buff=0.2)
             
             # Add labels
             temp_label_h = MathTex("T_H", color=HIGH_TEMP_COLOR).next_to(piston_system, UP)
-            source_temp_label = MathTex("T_H", color=HIGH_TEMP_COLOR).next_to(heat_source, DOWN)
+            source_temp_label = MathTex("T_H", color=HIGH_TEMP_COLOR).next_to(piston_system, DOWN, buff=0.5)
             
             # Add cylinder head label and arrow
             cylinder_head_label = Text("Cylinder Head", font_size=20)
@@ -884,7 +874,6 @@ class CarnotProcessScene(ThreeDScene, VoiceoverScene):
                 Create(piston_system),
                 FadeIn(temp_rect),
                 LaggedStart(*[FadeIn(p) for p in particles]),
-                FadeIn(heat_source),
                 Write(temp_label_h),
                 Write(source_temp_label),
                 Create(head_arrow),
@@ -905,7 +894,7 @@ class CarnotProcessScene(ThreeDScene, VoiceoverScene):
                 arrows = VGroup()
                 for i in range(4):
                     arrow = Arrow(
-                        heat_source.get_top() + RIGHT*(i-1.5)*0.4,
+                        piston_system.get_bottom() + RIGHT*(i-1.5)*0.4,
                         temp_rect.get_bottom() + RIGHT*(i-1.5)*0.4,
                         color=HIGH_TEMP_COLOR,
                         max_tip_length_to_length_ratio=0.15
@@ -988,7 +977,6 @@ class CarnotProcessScene(ThreeDScene, VoiceoverScene):
             
             # Fade out additional elements
             self.play(
-                FadeOut(heat_source),
                 FadeOut(source_temp_label),
                 FadeOut(heat_arrows),
                 FadeOut(q_h_label),
@@ -1066,17 +1054,6 @@ class CarnotProcessScene(ThreeDScene, VoiceoverScene):
                 run_time=tracker.duration/5
             )
 
-            # Create cold reservoir visual at the bottom of cylinder
-            cold_reservoir = ImageMobject("dataset/AE302/images/icecube.jpg")
-            cold_reservoir.scale(0.3)  # Adjust scale as needed
-            cold_reservoir.next_to(piston_system, DOWN, buff=0)
-            
-            # Show cold reservoir
-            self.play(
-                FadeIn(cold_reservoir),
-                run_time=tracker.duration/5
-            )
-
             # Create point C and adiabatic path from B to C
             point_c = Dot(axes.c2p(4.0, 0.25), color=YELLOW)
             label_c = MathTex("C").next_to(point_c, DOWN+RIGHT)
@@ -1109,7 +1086,7 @@ class CarnotProcessScene(ThreeDScene, VoiceoverScene):
             for i in range(4):
                 arrow = Arrow(
                     start=new_main_temp_rect.get_bottom() + RIGHT*(i-1.5)*0.4,
-                    end=cold_reservoir.get_top() + RIGHT*(i-1.5)*0.4,
+                    end=piston_system.get_bottom() + RIGHT*(i-1.5)*0.4,
                     color=LOW_TEMP_COLOR,
                     buff=0.1,
                     max_tip_length_to_length_ratio=0.15
@@ -1156,7 +1133,6 @@ class CarnotProcessScene(ThreeDScene, VoiceoverScene):
         with self.voiceover(text="The fourth and last step is called the Reversible Adiabatic Compression. Now the low energy sink is removed and insulation is placed back on the cylinder head. The gas continues to be compressed downward and it goes back to its initial state. In other words, the temperature rises from TL to TH which means the cycle is now complete. The area inside this closed path shows us the net work done during the cycle. Keep in mind that the Carnot heat-engine cycle is a reversible cycle, so every step can be reversed.") as tracker:
             # Remove cold reservoir and add insulation
             self.play(
-                FadeOut(cold_reservoir),
                 FadeOut(heat_arrows),
                 FadeOut(q_l_label),
                 Create(insulation),

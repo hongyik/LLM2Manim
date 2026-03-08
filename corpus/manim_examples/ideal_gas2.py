@@ -844,10 +844,6 @@ class IdealGas2(VoiceoverScene, ThreeDScene):
         volume_text = Text("VOLUME", font_size=36)
         volume_text.next_to(container, UP)
         
-        # Use PNG image for lock
-        lock_img = ImageMobject("dataset/AE302/images/lock.png")
-        lock_img.scale(0.15)  # Adjust scale as needed
-        lock_img.next_to(volume_text, RIGHT, buff=0.1)
         
         cv_subtitle = Text("Constant Volume Process (c_V)", font_size=30, color=GREEN).to_edge(UP)
         
@@ -875,7 +871,6 @@ class IdealGas2(VoiceoverScene, ThreeDScene):
         ):
             self.play(Write(volume_text))
             self.wait(0.5)
-            self.play(FadeIn(lock_img))
             self.play(
                 Write(cv_subtitle),
                 Write(cv_equations),
@@ -904,7 +899,6 @@ class IdealGas2(VoiceoverScene, ThreeDScene):
         # Reset everything
         self.play(
             FadeOut(volume_text),
-            FadeOut(lock_img),
             FadeOut(cv_subtitle),
             FadeOut(cv_equations),
             FadeOut(info),
@@ -981,12 +975,9 @@ class IdealGas2(VoiceoverScene, ThreeDScene):
         cv_label = Text("Constant Volume", font_size=24, color=GREEN)
         cv_label.next_to(cv_container, DOWN)
         
-        # Volume text and lock for constant volume
+        # Volume text for constant volume
         cv_volume_text = Text("VOLUME", font_size=28)
         cv_volume_text.next_to(cv_container, UP, buff=0.2)
-        lock_img_comparison = ImageMobject("dataset/AE302/images/lock.png")
-        lock_img_comparison.scale(0.12)
-        lock_img_comparison.next_to(cv_volume_text, RIGHT, buff=0.1)
 
         # Right side - Constant Pressure
         cp_container = Rectangle(width=2, height=4, stroke_color=WHITE)
@@ -1028,10 +1019,6 @@ class IdealGas2(VoiceoverScene, ThreeDScene):
                 Write(cv_volume_text),
                 Write(cp_pressure_text)
             )
-            self.play(
-                FadeIn(lock_img_comparison) #,
-            )
-
         # Animate both processes simultaneously with detailed explanation
         n_steps = 8
         with self.voiceover(
@@ -1086,7 +1073,7 @@ class IdealGas2(VoiceoverScene, ThreeDScene):
             self.play(
                 *[FadeOut(mob) for mob in [
                     cv_container, cp_container, cv_label, cp_label, title,
-                    cv_volume_text, lock_img_comparison, cp_pressure_text,
+                    cv_volume_text, cp_pressure_text,
                     relationship_eq
                 ]]
             )

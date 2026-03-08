@@ -19,6 +19,7 @@ PROMPTS_DIR = ROOT_DIR / "prompts"
 SYSTEM_PROMPT_CODE_FILE = PROMPTS_DIR / "system_prompt_code.txt"
 USER_PROMPT_CODE_TEMPLATE_FILE = PROMPTS_DIR / "user_prompt_code_template.txt"
 CODE_PATTERNS_FILE = PROMPTS_DIR / "code_patterns.txt"   # verified working snippets
+MANIM_RULES_FILE  = PROMPTS_DIR / "manim_rules.md"       # API rules for self-review
 
 # API keys and endpoints (shared)
 # Supported providers: deepseek, openai, anthropic (add more below and in agent/llm.py)

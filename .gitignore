@@ -21,7 +21,7 @@ Thumbs.db
 
 # Logs
 *.log
-
+.claude/
 # Large model / binary assets (do not commit)
 *.onnx
 *.bin

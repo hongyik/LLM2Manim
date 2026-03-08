@@ -1,198 +1,268 @@
-# LangChain Agent Version – Animated Math & Physics
+# Animated Math & Physics — LangGraph Pipeline
 
-This folder implements the same animation pipeline as the parent project using **LangChain** in an **agent-like** way, with:
+An AI-powered pipeline that generates animated educational math/physics videos using **Manim CE**, **LangGraph**, and **LLM agentic retrieval**.
 
-1. **Dynamic animation plan** – Stage 2 is not fixed; the number and content of steps depend on the user input (e.g. simple topic → fewer steps, complex topic → more steps).
-2. **Step memory** – When generating each step’s description, the agent sees the **full plan** and the **descriptions of all previous steps**, so the narrative stays consistent and each step builds on the others.
+---
 
-## Pipeline
+## Pipeline Overview
 
-The pipeline is a **LangGraph**: each stage is a node. To visualize it and save a diagram:
+The pipeline is a **10-node LangGraph** that converts a user question into a rendered MP4:
 
-```bash
-cd langchain_agent
-python visualize_pipeline.py   # or use your venv Python
+```
+User Question
+     │
+     ▼
+ 1. Parse
+     │
+     ▼
+ 2. Concept Retrieval  ◄── corpus/textbooks/  (LLM + grep)
+     │
+     ▼
+ 3. Planner            ◄── concept context injected
+     │
+     ▼
+ 4. Step Descriptions  ◄── step memory + ledger
+     │
+     ▼
+ 5. Layout Engine      (deterministic, no LLM)
+     │
+     ▼
+ 6. Code Retrieval     ◄── corpus/manim_examples/ + code_patterns.txt  (LLM + grep)
+     │
+     ▼
+ 7. Pseudo-code Gen    ◄── per-scene structured outline
+     │
+     ▼
+ 8. Manim Code Gen     ◄── ledger + layout + pseudocode + code examples
+     │
+     ▼
+ 9. Scene Fix          ◄── api_check → validate → LLM fix loop (max 3 attempts)
+     │
+     ▼
+10. Render & Combine   ◄── parallel Manim render + FFmpeg concat
+     │
+     ▼
+  combined_animation.mp4
 ```
 
-This writes `pipeline_graph.md` (Mermaid, renders on GitHub), `pipeline_graph.mmd`, and optionally `pipeline_graph.png`. See [pipeline_graph.md](pipeline_graph.md) for the diagram.
+---
 
-| Stage | What it does |
-|-------|----------------|
-| 1 | Parse user input (topic/concept). |
-| 2 | **Planner agent**: From the topic, produce a structured plan (list of steps with `id` and `goal`). Plan is **dynamic** (depends on input). |
-| 3 | **Step agent**: For each step, generate an animation description with **memory** of the plan and all previous step descriptions. |
-| 4 | **Code agent**: Generate Manim code for each step (reuses parent project’s code prompts). |
-| 5 | **LangGraph auto-fix**: For each scene, validate (run Manim); if it fails, LLM fixes the code and we re-validate in a loop (up to 2 attempts per scene). |
-| 6 | **Render & combine**: Render each step’s Manim scene **in parallel**, then concatenate all videos (in plan order) into one final MP4 using FFmpeg. |
+## Stage Details
+
+| # | Node | Description |
+|---|------|-------------|
+| 1 | **Parse** | Validates non-empty input. |
+| 2 | **Concept Retrieval** | LLM generates search keywords → grep `corpus/textbooks/` → LLM summarizes hits into a *concept context* injected into the planner. |
+| 3 | **Planner** | Produces a dynamic JSON list of `{id, goal}` steps. Number and content depend on input. Receives concept context for domain accuracy. |
+| 4 | **Step Descriptions** | Runs sequentially; each step sees the full plan + all previous step descriptions + the running **ledger** (notation, visual style, object names). |
+| 5 | **Layout Engine** | Deterministic greedy placement — assigns each element a zone, position, and animation group. No LLM call. |
+| 6 | **Code Retrieval** | LLM generates code-oriented keywords → grep `corpus/manim_examples/` + `prompts/code_patterns.txt` → LLM selects the most relevant Manim snippets. |
+| 7 | **Pseudo-code Gen** | For each scene, LLM generates a structured blueprint: *Objects / Animations / Voiceover beats / Layout notes*. Injected into code gen prompt. |
+| 8 | **Manim Code Gen** | Generates one `.py` per scene using the description + ledger + layout spec + pseudocode outline + code examples. |
+| 9 | **Scene Fix** | Secondary LangGraph per scene: `api_check → validate → LLM fix`. Catches syntax, undefined names, forbidden colors, runtime errors. Up to 3 attempts. |
+| 10 | **Render & Combine** | Renders each scene in parallel (max 2 workers — Kokoro TTS is memory-intensive), then concatenates with FFmpeg. |
+
+---
+
+## Project Structure
+
+```
+Animated-math-and-physics/
+│
+├── agent/                          # Pipeline modules
+│   ├── pipeline_graph.py           # Main 10-node LangGraph
+│   ├── planner.py                  # Stage 3: dynamic plan from user input
+│   ├── step_agent.py               # Stage 4: step descriptions with memory
+│   ├── layout_engine.py            # Stage 5: deterministic layout (no LLM)
+│   ├── code_agent.py               # Stage 8: Manim code generation
+│   ├── scene_fix_graph.py          # Stage 9: secondary LangGraph fix loop
+│   ├── render.py                   # Stage 10: parallel render + FFmpeg
+│   │
+│   ├── concept_retrieval.py        # Stage 2: textbook grep + LLM summarize
+│   ├── code_retrieval.py           # Stage 6: Manim examples grep + LLM summarize
+│   ├── pseudocode_agent.py         # Stage 7: per-scene structured outline
+│   ├── retrieval.py                # Shared: grep_files, llm_extract_keywords, llm_summarize_hits
+│   │
+│   ├── api_check.py                # Fast AST pre-check (syntax, undefined names, bad colors)
+│   ├── ledger.py                   # Cross-step consistency ledger
+│   ├── memory_block.py             # Cross-run error→fix memory
+│   ├── llm.py                      # LLM provider routing (DeepSeek / OpenAI / Anthropic)
+│   └── __init__.py
+│
+├── corpus/                         # Retrieval corpora (user-maintained)
+│   ├── textbooks/                  # Drop .txt/.md textbook files here
+│   └── manim_examples/             # Drop .py Manim example files here
+│
+├── prompts/                        # All LLM prompt files
+│   ├── plan_prompt.txt
+│   ├── step_with_memory_prompt.txt
+│   ├── system_prompt_code.txt
+│   ├── user_prompt_code_template.txt
+│   ├── pseudocode_system_prompt.txt
+│   ├── code_patterns.txt           # Verified working Manim snippets (20 KB)
+│   ├── manim_rules.md              # Manim API rules injected into code gen
+│   ├── manim_allowlist.json        # 582 Manim CE symbols (auto-generated)
+│   └── error_memory.json           # Cross-run error→fix patterns
+│
+├── structure_graph/                # Pipeline diagrams
+│   ├── pipeline_graph.md           # Mermaid diagram (renders on GitHub)
+│   ├── pipeline_graph.mmd          # Raw Mermaid source
+│   ├── pipeline_graph.png          # PNG snapshot
+│   └── visualize_pipeline.py       # Script to regenerate diagrams
+│
+├── outputs/                        # Per-run output folders (auto-created)
+│   └── YYYY-MM-DD_HH-MM-SS/
+│       ├── animation_outputs/      # .py scene files, JSON debug files
+│       └── final_animation/        # individual_scenes/, combined_animation.mp4
+│
+├── config.py                       # All configuration constants
+├── llm_config.json                 # Per-stage LLM model routing
+├── main.py                         # Entry point
+├── requirements.txt
+└── .env                            # API keys (not committed)
+```
+
+---
 
 ## Setup
 
-From the repo root (or from this folder):
+### 1. Install dependencies
 
 ```bash
-cd langchain_agent
 pip install -r requirements.txt
 ```
 
-Set API keys (same as parent project), e.g. in a `.env` in the repo root:
+### 2. API keys
 
-- `DEEPSEEK_API_KEY` (or use `LLM_PROVIDER=openai` and `GPT4_API_KEY`)
+Create a `.env` file in the project root (or set as system environment variables):
 
-### Per-stage API/model selection
+```env
+DEEPSEEK_API_KEY=sk-...
+GPT4_API_KEY=sk-...          # optional — for OpenAI stages
+ANTHROPIC_API_KEY=sk-ant-... # optional — for Claude stages
+```
 
-Each stage can use a **different** provider and model. Set these in your environment (or `.env`):
+### 3. Add corpus files (optional but recommended)
+
+| Folder | What to put there |
+|--------|-------------------|
+| `corpus/textbooks/` | `.txt` or `.md` — extracted textbook chapters, lecture notes, Wikipedia articles |
+| `corpus/manim_examples/` | `.py` — working Manim scene files to use as code references |
+
+The pipeline works without corpus files — retrieval stages simply return empty strings and are skipped.
+
+---
+
+## Configuration
+
+### LLM routing — `llm_config.json`
+
+Each pipeline stage can use a different provider and model:
+
+```json
+{
+  "planner":    { "provider": "deepseek", "model": "deepseek-chat" },
+  "step":       { "provider": "deepseek", "model": "deepseek-chat" },
+  "pseudocode": { "provider": "deepseek", "model": "deepseek-chat" },
+  "code":       { "provider": "deepseek", "model": "deepseek-reasoner" },
+  "fix":        { "provider": "deepseek", "model": "deepseek-reasoner" }
+}
+```
+
+Supported providers: `deepseek` · `openai` · `anthropic`
+
+### Environment variable overrides
 
 | Variable | Default | Description |
-|----------|--------|-------------|
-| `LLM_PROVIDER` | `deepseek` | Fallback when a stage does not set its own. |
-| `PLANNER_PROVIDER` | same as `LLM_PROVIDER` | Provider: `deepseek`, `openai`, or `anthropic`. |
-| `PLANNER_MODEL` | per-provider default | Model for the planner. |
-| `STEP_PROVIDER` | same as `LLM_PROVIDER` | Provider for the step-description stage. |
-| `STEP_MODEL` | per-provider default | Model for step descriptions. |
-| `CODE_PROVIDER` | same as `LLM_PROVIDER` | Provider for the code-generation stage. |
-| `CODE_MODEL` | per-provider default | Model for Manim code generation. |
+|----------|---------|-------------|
+| `LLM_PROVIDER` | `deepseek` | Global fallback provider |
+| `PLANNER_PROVIDER` / `PLANNER_MODEL` | from config | Planner + retrieval LLM calls |
+| `STEP_PROVIDER` / `STEP_MODEL` | from config | Step descriptions |
+| `PSEUDOCODE_PROVIDER` / `PSEUDOCODE_MODEL` | from config | Pseudo-code outlines |
+| `CODE_PROVIDER` / `CODE_MODEL` | from config | Manim code generation |
+| `FIX_PROVIDER` / `FIX_MODEL` | from config | Scene auto-fix |
+| `MAX_SECTIONS` | `7` | Max scenes the planner can produce |
+| `MANIM_RENDER_QUALITY` | `l` | `l` / `m` / `h` / `p` / `k` |
+| `RETRIEVAL_MAX_CHARS` | `8000` | Token budget per retrieval call |
 
-For **anthropic** (Claude): set `ANTHROPIC_API_KEY` and optionally `ANTHROPIC_MODEL`; install with `pip install langchain-anthropic`.
+---
 
-Example: DeepSeek for planning, GPT-4 for code:
+## Usage
 
-```bash
-PLANNER_PROVIDER=deepseek
-CODE_PROVIDER=openai
-CODE_MODEL=gpt-4o
-DEEPSEEK_API_KEY=sk-...
-GPT4_API_KEY=sk-...
-```
-
-Example: add Claude for the step stage:
+### CLI
 
 ```bash
-PLANNER_PROVIDER=deepseek
-STEP_PROVIDER=anthropic
-CODE_PROVIDER=openai
-DEEPSEEK_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-GPT4_API_KEY=sk-...
-# pip install langchain-anthropic
-```
-
-## Example usage
-
-### 1. Command line
-
-From the `langchain_agent` directory (or repo root with `python langchain_agent/main.py`):
-
-```bash
-cd langchain_agent
-
-# Topic as argument
-python main.py "Explain the material derivative in fluid flow"
-
-# Or prompt for topic
+python main.py "Explain the Zeroth and First Law of Thermodynamics"
+# or prompt interactively:
 python main.py
-# Then type e.g.: Geometric interpretation of the derivative at x=2
 ```
 
-### 2. Programmatic (Python)
-
-Run the full pipeline from your own script; the pipeline is a LangGraph, so you can also inspect or reuse the graph.
+### Programmatic
 
 ```python
-from pathlib import Path
-import sys
-sys.path.insert(0, str(Path("path/to/Animated-math-and-physics/langchain_agent").resolve()))
+from agent.pipeline_graph import run_pipeline
 
-from agent.pipeline_graph import run_pipeline, build_pipeline_graph
-
-# One-shot: run entire pipeline
-result = run_pipeline("Explain the chain rule with a simple example")
+result = run_pipeline("Explain the material derivative in fluid flow")
 if result["status"] == "success":
-    plan = result["stages"]["plan"]["steps"]
-    video_path = result["stages"].get("combined_scene_path")
-    print("Steps:", [s["id"] for s in plan])
-    print("Video:", video_path)
+    print("Video:", result["stages"].get("combined_scene_path"))
 else:
     print("Error:", result["error"])
-
-# Or use the graph directly (e.g. for streaming or custom state)
-graph = build_pipeline_graph()
-app = graph.compile()
-final_state = app.invoke({"user_input": "Derivative of x^2", "stages": {}})
-print(final_state.get("plan"), final_state.get("stages", {}).keys())
 ```
 
-### 3. Load env from `.env`
+### Output structure (per run)
 
-If you use a `.env` file in the project root:
-
-```python
-from pathlib import Path
-from dotenv import load_dotenv
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
-
-from agent.pipeline_graph import run_pipeline
-result = run_pipeline("Your math topic here")
+```
+outputs/2025-01-15_14-30-00/
+├── animation_outputs/
+│   ├── animation_descriptions.json   # step descriptions
+│   ├── ledger.json                   # consistency ledger
+│   ├── pseudocode.json               # per-scene outlines (debug)
+│   ├── generated_code.json           # raw LLM code
+│   ├── intro.py                      # generated Manim scene
+│   ├── derivation.py
+│   ├── validation_report.json        # scene fix details
+│   └── validation_report.txt
+└── final_animation/
+    ├── individual_scenes/
+    │   ├── intro.mp4
+    │   └── derivation.mp4
+    └── combined_animation.mp4
 ```
 
-## Run (CLI)
+---
 
-From the `langchain_agent` directory:
+## Key Design Decisions
+
+### Agentic Retrieval (LLM + grep, no vector DB)
+- Concept retrieval: LLM generates domain keywords → grep textbook corpus → LLM summarizes → injected into planner
+- Code retrieval: LLM generates **code-oriented** short keywords (e.g. `temperature`, `VGroup`, `MathTex`) → grep Manim examples → LLM selects best snippets → injected into code gen
+- No embeddings or vector database required
+
+### Consistency Ledger
+- Append-only cross-step dictionary: notation, visual style, object names, story-so-far, constraints
+- Prevents each scene from reinventing symbols and colors
+
+### Pseudo-code Bridge
+- Reduces code-gen hallucinations by providing a concrete per-scene blueprint before writing 400 lines of Manim code
+- Format: `Objects → Animations → Voiceover beats → Layout notes`
+
+### Scene Fix Loop (secondary LangGraph)
+```
+api_check → (violations) → fix → api_check (loop back)
+          → (ok)         → validate → (fail) → fix
+                                    → (ok)   → END
+```
+- **`api_check`**: Fast AST scan — undefined names, forbidden colors (`MAGENTA`, `CYAN`, `VIOLET`), syntax errors — before running Manim
+- **`validate`**: Runs Manim subprocess (120 s timeout)
+- **`fix`**: Sends line-numbered code + error context snippet to LLM. All static violations from `api_check` are appended so the LLM can fix multiple issues per attempt. Uses SEARCH/REPLACE patches; falls back to FULL_REWRITE for syntax errors.
+- **Error memory** (`prompts/error_memory.json`): cross-run learning from successful fixes
+
+---
+
+## Regenerate Pipeline Diagram
 
 ```bash
-python main.py "Explain the material derivative in fluid flow"
-# or
-python main.py
-# then enter topic when prompted
+python structure_graph/visualize_pipeline.py
 ```
 
-Outputs (per run, under a **timestamped folder**):
-
-- `outputs/<YYYY-MM-DD_HH-MM-SS>/` – one folder per run (current date and time when the run started).
-  - `animation_outputs/` – `animation_descriptions.json`, `<step_id>.py`, `generated_code.json`.
-  - `final_animation/` – `individual_scenes/<step_id>.mp4`, `combined_animation.mp4`.
-
-### Rendering (Stage 5)
-
-- **Manim** and **FFmpeg** must be installed for video output.
-- Optional env: `MANIM_RENDER_QUALITY` (default `l`; use `m` or `h` for higher quality), `MANIM_CLI` (default `python -m manim`).
-
-## Testing for failure
-
-The pipeline returns a single result dict. **Treat it as failed if `result["status"] == "error"`.**
-
-- **From CLI**: If the run failed, the script prints `❌ Error: <message>` and you can check the process exit code (e.g. in scripts: `python main.py "topic" ; echo $?` on Unix; on Windows check `%ERRORLEVEL%` or use the return value from `main()`).
-- **From Python**: Always check the return value of `run_pipeline()` or `process_visualization()`:
-
-```python
-from agent.pipeline_graph import run_pipeline
-
-result = run_pipeline("Your topic here")
-
-if result["status"] == "error":
-    print("Failed:", result["error"])
-    # Optional: inspect which stage failed via result["stages"]
-else:
-    print("Success. Video:", result["stages"].get("combined_scene_path"))
-```
-
-**When is `status` set to `"error"`?**
-
-- Parse: empty input.
-- Any stage raises an exception (LLM, file I/O, etc.).
-- Scene auto-fix: one or more scenes still fail after max attempts (`still_failed`).
-- Render: Manim/FFmpeg did not produce a combined video (`render` stage `status` is `"partial"` or `"error"`).
-
-To force a quick failure (e.g. in CI), run with empty input:
-
-```bash
-python main.py ""
-# or from Python: run_pipeline("")  → result["status"] == "error", result["error"] explains why
-```
-
-## Design
-
-- **Planner** (`agent/planner.py`): One LLM call that returns a JSON list of `{id, goal}`. No fixed template; the model decides how many steps and what each step is.
-- **Step agent** (`agent/step_agent.py`): Runs **sequentially**. For step *i*, the prompt includes the full plan and the text of steps 1…*i*−1 so each step “remembers” the others.
-- **Code agent** (`agent/code_agent.py`): Uses the parent project’s `system_prompt_code.txt` and `user_prompt_code_template.txt` to generate Manim code from each step description.
-- **Scene auto-fix** (`agent/scene_fix_graph.py`): **LangGraph** workflow: `validate` (run Manim) → on failure → `fix` (LLM rewrites code from error + code) → `validate` again, until success or max attempts. Uses the same stage config as code gen (e.g. `CODE_PROVIDER`).
-- **Render** (`agent/render.py`): Renders each step’s `.py` in **parallel** (multiprocessing), then merges the resulting MP4s with FFmpeg in plan order into `final_animation/combined_animation.mp4`.
+Outputs updated `structure_graph/pipeline_graph.md`, `.mmd`, `.png`.
