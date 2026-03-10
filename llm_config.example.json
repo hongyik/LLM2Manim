@@ -1,0 +1,58 @@
+{
+  "_doc": [
+    "LLM routing for each pipeline stage.",
+    "Copy this file to llm_config.json and edit as needed.",
+    "",
+    "Providers:  deepseek | openai | anthropic",
+    "DeepSeek models:   deepseek-chat  deepseek-reasoner",
+    "OpenAI models:     gpt-4o  gpt-4o-mini  gpt-4-turbo",
+    "Anthropic models:  claude-opus-4-6  claude-sonnet-4-6  claude-haiku-4-5-20251001",
+    "",
+    "Stages:",
+    "  default     - fallback when a stage is not listed below",
+    "  planner     - Node 3: turns user topic into a list of animation steps",
+    "               (also used by concept_retrieval and code_retrieval keyword/summarize LLM calls)",
+    "  step        - Node 4: writes detailed narration + visual plan per step",
+    "  pseudocode  - Node 7: generates per-scene structured outline (objects, animations, beats)",
+    "  code        - Node 8: generates Manim scene code from the step description",
+    "  fix         - Node 9: patches/rewrites broken Manim code after a validation error",
+    "",
+    "Env vars take priority over this file:",
+    "  PLANNER_PROVIDER,    PLANNER_MODEL",
+    "  STEP_PROVIDER,       STEP_MODEL",
+    "  PSEUDOCODE_PROVIDER, PSEUDOCODE_MODEL",
+    "  CODE_PROVIDER,       CODE_MODEL",
+    "  FIX_PROVIDER,        FIX_MODEL",
+    "  LLM_PROVIDER         (global fallback)"
+  ],
+
+  "default": {
+    "provider": "deepseek",
+    "model":    "deepseek-chat"
+  },
+
+  "planner": {
+    "provider": "deepseek",
+    "model":    "deepseek-chat"
+  },
+
+  "step": {
+    "provider": "deepseek",
+    "model":    "deepseek-chat"
+  },
+
+  "code": {
+    "provider": "deepseek",
+    "model":    "deepseek-reasoner"
+  },
+
+  "pseudocode": {
+    "provider": "deepseek",
+    "model":    "deepseek-chat"
+  },
+
+  "fix": {
+    "provider": "deepseek",
+    "model":    "deepseek-reasoner"
+  }
+}

@@ -13,11 +13,13 @@ media/
 videos/
 images/
 outputs/
+example/
 # IDE / OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+corpus/
 
 # Logs
 *.log
@@ -28,4 +30,4 @@ Thumbs.db
 
 # Environment / secrets
 .env
-.env.*
+llm_config.json
