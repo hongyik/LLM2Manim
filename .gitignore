@@ -15,6 +15,7 @@ images/
 outputs/
 example/
 examples/
+test/
 # IDE / OS
 .vscode/
 .idea/
