@@ -1,0 +1,6 @@
+file 'individual_scenes/intro.mp4'
+file 'individual_scenes/definitions.mp4'
+file 'individual_scenes/visual_2d.mp4'
+file 'individual_scenes/matrix_form.mp4'
+file 'individual_scenes/composition.mp4'
+file 'individual_scenes/kernel_image.mp4'

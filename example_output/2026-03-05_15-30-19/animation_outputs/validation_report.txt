@@ -1,0 +1,114 @@
+SCENE VALIDATION REPORT
+Generated : 2026-03-05 16:31:54
+Fixed     : INTRO, DEFINITIONS, VISUAL_2D, MATRIX_FORM, COMPOSITION, KERNEL_IMAGE
+Failed    : INVERTIBILITY, SUMMARY
+
+============================================================
+SCENE: INTRO  [FIXED after 1 attempt(s)]
+============================================================
+  attempt 0 [validate] [unknown]:
+      ┌───────────────────── Traceback (most recent call last) ─────────────────────┐
+      │ C:\Users\kehon\OneDrive\Desktop\Animated-math-and-physics\Amp-venv\Lib\site │
+      │ -packages\manim\cli\render\commands.py:125 in render                        │
+  attempt 1 → fix (patch, error type: unknown)
+
+============================================================
+SCENE: DEFINITIONS  [FIXED after 1 attempt(s)]
+============================================================
+  attempt 0 [validate] [unknown]:
+      ┌───────────────────── Traceback (most recent call last) ─────────────────────┐
+      │ C:\Users\kehon\OneDrive\Desktop\Animated-math-and-physics\Amp-venv\Lib\site │
+      │ -packages\manim\cli\render\commands.py:125 in render                        │
+  attempt 1 → fix (patch, error type: unknown)
+
+============================================================
+SCENE: VISUAL_2D  [FIXED after 0 attempt(s)]
+============================================================
+  (no failure history recorded — passed on first try)
+
+============================================================
+SCENE: MATRIX_FORM  [FIXED after 0 attempt(s)]
+============================================================
+  (no failure history recorded — passed on first try)
+
+============================================================
+SCENE: COMPOSITION  [FIXED after 0 attempt(s)]
+============================================================
+  (no failure history recorded — passed on first try)
+
+============================================================
+SCENE: KERNEL_IMAGE  [FIXED after 3 attempt(s)]
+============================================================
+  attempt 0 [validate] [api]:
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.:   0%|          | 0/30 [00:00<?, ?it/s]
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.:  50%|#####     | 15/30 [00:00<00:00, 146.28it/s]
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.: 100%|##########| 30/30 [00:00<00:00, 139.71it/s]
+  attempt 1 → fix (patch, error type: api)
+  attempt 1 [validate] [api]:
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 3: Transform(NumberPlane of 4 submobjects), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+      ┌───────────────────── Traceback (most recent call last) ─────────────────────┐
+  attempt 2 → fix (patch, error type: api)
+  attempt 2 [validate] [api]:
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 3: Transform(NumberPlane of 4 submobjects), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+      ┌───────────────────── Traceback (most recent call last) ─────────────────────┐
+  attempt 3 → fix (patch, error type: api)
+
+============================================================
+SCENE: INVERTIBILITY  [FAILED after 3 attempt(s)]
+============================================================
+  attempt 0 [validate] [unknown]:
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.:   0%|          | 0/15 [00:00<?, ?it/s]
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.: 100%|##########| 15/15 [00:00<00:00, 146.45it/s]
+      ┌───────────────────── Traceback (most recent call last) ─────────────────────┐
+  attempt 1 → fix (patch, error type: unknown)
+  attempt 1 [validate] [unknown]:
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 3: Write(MathTex('T^{-1}')):   0%|          | 0/15 [00:00<?, ?it/s]
+      Animation 5: FadeOut(MathTex('T^{-1}')):   0%|          | 0/15 [00:00<?, ?it/s]
+  attempt 2 → fix (patch, error type: unknown)
+  attempt 2 [validate] [unknown]:
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 3: Write(MathTex('T^{-1}')):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 5: FadeOut(MathTex('T^{-1}')):   0%|          | 0/1 [00:00<?, ?it/s]
+  attempt 3 → fix (patch, error type: unknown)
+  attempt 3 [validate] [unknown]:
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 3: Write(MathTex('T^{-1}')):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 5: FadeOut(MathTex('T^{-1}')):   0%|          | 0/1 [00:00<?, ?it/s]
+  --- FINAL ERROR (first 5 lines) ---
+      Animation 0: Create(NumberPlane of 4 submobjects), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 3: Write(MathTex('T^{-1}')):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 5: FadeOut(MathTex('T^{-1}')):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 6: FadeIn(Text('Invertible')):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 8: Create(Arrow), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+
+============================================================
+SCENE: SUMMARY  [FAILED after 3 attempt(s)]
+============================================================
+  attempt 0 [api_check] [import]:
+      API violations (caught before running manim):
+      - line 32: Constant 'BRIGHT_YELLOW' is not defined — check spelling or use a known Manim constant/color
+      - line 35: Constant 'BRIGHT_YELLOW' is not defined — check spelling or use a known Manim constant/color
+  attempt 1 → fix (patch, error type: import)
+  attempt 1 [validate] [api]:
+      Animation 0: FadeIn(Text('T: V → W')):   0%|          | 0/15 [00:00<?, ?it/s]
+      Animation 1: FadeIn(VGroup of 2 submobjects):   0%|          | 0/15 [00:00<?, ?it/s]
+      Animation 2: Create(Brace), etc.:   0%|          | 0/15 [00:00<?, ?it/s]
+  attempt 2 → fix (rewrite, error type: api)
+  attempt 2 [validate] [api]:
+      Animation 0: FadeIn(Text('T: V → W')):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 1: FadeIn(VGroup of 2 submobjects):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 2: Create(Brace), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+  attempt 3 → fix (patch, error type: api)
+  attempt 3 [validate] [api]:
+      Animation 0: FadeIn(Text('T: V → W')):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 1: FadeIn(VGroup of 2 submobjects):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 2: Create(Brace), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+  --- FINAL ERROR (first 5 lines) ---
+      Animation 0: FadeIn(Text('T: V → W')):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 1: FadeIn(VGroup of 2 submobjects):   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 2: Create(Brace), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 5: FadeIn(VGroup of 3 submobjects), etc.:   0%|          | 0/1 [00:00<?, ?it/s]
+      Animation 6: Indicate(VGroup of 3 submobjects):   0%|          | 0/1 [00:00<?, ?it/s]

@@ -7,6 +7,16 @@ An AI-powered pipeline that converts a natural language topic into a fully rende
 
 ---
 
+## Example Output
+
+> Topic: *"Linear transformations, kernel, and image"*
+
+https://github.com/hongyik/LLM2Manim/raw/main/example_output/2026-03-05_15-30-19/final_animation/combined_animation.mp4
+
+See [`example_output/`](example_output/) for the full run artifacts: generated scene files, ledger, pseudocode, and validation report.
+
+---
+
 ## Pipeline Overview
 
 ![Pipeline Structure](structure_graph/structure.png)
