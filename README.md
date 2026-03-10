@@ -7,14 +7,6 @@ An AI-powered pipeline that converts a natural language topic into a fully rende
 
 ---
 
-## Example Output
-
-https://github.com/hongyik/LLM2Manim/raw/main/examples/definitions.mp4
-
-> Scene generated from: *"Explain the definition of a limit in calculus"*
-
----
-
 ## Pipeline Overview
 
 ![Pipeline Structure](structure_graph/structure.png)
