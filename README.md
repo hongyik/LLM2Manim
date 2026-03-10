@@ -331,18 +331,9 @@ api_check (AST) → ok → validate (manim subprocess) → ok → END
 
 ---
 
-## Regenerate Pipeline Diagram
-
-```bash
-python structure_graph/visualize_pipeline.py
-```
-
-Outputs updated `structure_graph/pipeline_graph.md`, `.mmd`, and `.png`.
-
----
-
 ## License
 
 This project is released under the [MIT License](LICENSE).
 
 The Kokoro TTS model (`kokoro-v1.0.onnx`, `voices-v1.0.bin`) is distributed separately under its own license — see the [Kokoro repository](https://huggingface.co/hexgrad/Kokoro-82M) for details.
+
