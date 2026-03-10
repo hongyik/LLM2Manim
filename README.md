@@ -343,7 +343,9 @@ api_check (AST) → ok → validate (manim subprocess) → ok → END
 
 ## License
 
-This project is released under the [MIT License](LICENSE).
+This project is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+**Free for personal, academic, and research use. Commercial use is not permitted.**
 
 The Kokoro TTS model (`kokoro-v1.0.onnx`, `voices-v1.0.bin`) is distributed separately under its own license — see the [Kokoro repository](https://huggingface.co/hexgrad/Kokoro-82M) for details.
 
