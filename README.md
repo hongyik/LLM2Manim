@@ -156,8 +156,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 If you encounter any issues or have questions, please open an issue in the GitHub repository.
 
 ## System Diagrams
-
+![System Diagram](Fig1.png)
 
 ### Framework Diagram 
 
-![Framework Diagram](LLM_structure.png)
+![Framework Diagram](LLM_Structure.png)
