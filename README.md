@@ -111,18 +111,6 @@ python main.py "Show the geometric interpretation of the derivative of a functio
 ```bash
 python main.py
 ```
-
-### Web Interface(Have not developed yet)
-
-1. Start the Streamlit web interface:
-```bash
-streamlit run app.py
-```
-
-2. Open your browser and navigate to `http://localhost:8501`
-
-3. Enter your mathematical or physics concept description in the text area and click "Generate Visualization"
-
 ## Output
 
 The system generates:
