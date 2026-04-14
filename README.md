@@ -144,7 +144,7 @@ arXiv: https://arxiv.org/abs/2604.05266
   journal={arXiv preprint arXiv:2604.05266},
   year={2026}
 }
-
+```
 ## References
 
 - Aastha, J., et al. (2026). *LLM2Manim: Pedagogy-Aware AI Generation of STEM Animations*.  
