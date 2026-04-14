@@ -1,7 +1,7 @@
 # Animated Math and Physics Visualization System
 
 A powerful system that generates educational animations for mathematical and physics concepts using Manim and AI.
-
+[![arXiv](https://img.shields.io/badge/arXiv-2604.05266-b31b1b.svg)](https://arxiv.org/abs/2604.05266)
 ## Features
 
 - 🎯 Generate educational animations from natural language descriptions
