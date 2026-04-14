@@ -131,18 +131,24 @@ Here's an example of how to visualize the material derivative concept:
 python main.py "Show the material derivative of temperature in a fluid flow, including the convective and local derivative components"
 ```
 ## Citation
-If you use this code or the LLM2Manim framework in your research, please cite our paper:
 
-LLM2Manim: Pedagogy-Aware AI Generation of STEM Animations arXiv preprint arXiv:2604.05266 (2026)
+If you use this project in your research or applications, please cite our paper:
 
-## BibTeX
-Code snippet
+**LLM2Manim: Pedagogy-Aware AI Generation of STEM Animations**  
+arXiv: https://arxiv.org/abs/2604.05266
+
+```bibtex
 @article{llm2manim2026,
   title={LLM2Manim: Pedagogy-Aware AI Generation of STEM Animations},
-  author={Your Lastname, Firstname and Others},
+  author={Ke, Hongyi and others},
   journal={arXiv preprint arXiv:2604.05266},
   year={2026}
 }
+
+## References
+
+- Aastha, J., et al. (2026). *LLM2Manim: Pedagogy-Aware AI Generation of STEM Animations*.  
+  arXiv: https://arxiv.org/abs/2604.05266
 
 ## License
 
